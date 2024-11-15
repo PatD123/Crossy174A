@@ -83,6 +83,6 @@ export function getRandomNearLane(currLane, numOfLanes){
 
 export function getRandomFarLane(currLane, numOfLanes){
     var a = Math.min(currLane + 5, numOfLanes - 1);
-    var b = Math.min(currLane + 10, numOfLanes - 1);
+    var b = Math.min(currLane + 15, numOfLanes - 1);
     return Math.floor(Math.random() * (b - a + 1)) + a;
 }
