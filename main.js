@@ -106,16 +106,21 @@ function animate() {
 
     // Moving our player and camera to follow
     let position = new THREE.Vector3();
+    
     move_dir_.decompose(position, new THREE.Quaternion(), new THREE.Vector3());
     if(position.length() != 0){
-
+        // let player_pos = new THREE.Vector3();
+        // player.matrix.decompose(player_pos, new THREE.Quaternion(), new THREE.Vector3());
+        // const target = player_pos.clone().add(position);
         // Move player
-        player.matrix.premultiply(move_dir_)
+        // const smooth = player_pos.lerp(target, 0.1); // Adjust 0.1 for speed
+        // const trans = utils.translationMatrix(smooth.x - position.x,smooth.y - position.y, smooth.z - position.z);
+        player.matrix.premultiply(move_dir_);
         camera.matrix.premultiply(move_dir_)
         camera.matrixAutoUpdate = false;
         camera.lookAt(player.position);
         camera.matrix.decompose(camera.position, camera.quaternion, camera.scale);
-
+        camera.position.lerp(move_dir_, 0.1);
         // Update current lane
         if(position.z < 0) curr_lane_++;
         else if(position.z > 0) curr_lane_--;
@@ -165,6 +170,20 @@ function addLanes(){
     var end = start + 10;
     for(var i = start; i<end; i++){
         var lane = utils.Lane(i)
+
+        if (i % 4 === 0) {
+            lane.material = new THREE.MeshPhongMaterial({ color: 0x00FF00, flatShading: true });
+            const numTrees = Math.floor(Math.random() * 3) + 1;
+            for (let j = 0; j < numTrees; j++) {
+                const tree = utils.Tree();
+                const treeX = (Math.random() * 72 - 36 ) / 2; 
+                const treeZ = i * -6; // Lane position
+                const treeMatrix = utils.translationMatrix(treeX, 0, treeZ);
+                tree.matrix.copy(treeMatrix);
+                tree.matrixAutoUpdate = false;
+                scene.add(tree);
+            }            
+        }        
         scene.add(lane);
         lanes.push(lane)
     }
@@ -178,22 +197,25 @@ function randomIntervalPlacement() {
 
 function addCars(){
     var toStartOfLane = utils.translationMatrix(-22.5, 0, 0);
-
     var lane = utils.getRandomNearLane(curr_lane_, lanes.length);
-    var car = utils.Car();
-    car.matrix.multiply(lanes[lane].matrix);
-    car.matrix.premultiply(toStartOfLane);
-    scene.add(car);
-
-    cars.push([clock.getElapsedTime(), car])
-
-    for(var i = 0; i<2; i++){
-        var lane = utils.getRandomFarLane(curr_lane_, lanes.length);
+    if (lane % 4 != 0) {
         var car = utils.Car();
         car.matrix.multiply(lanes[lane].matrix);
         car.matrix.premultiply(toStartOfLane);
         scene.add(car);
 
         cars.push([clock.getElapsedTime(), car])
+    }
+
+    for(var i = 0; i<2; i++){
+        var lane = utils.getRandomFarLane(curr_lane_, lanes.length);
+        if (lane % 4 != 0) {
+            var car = utils.Car();
+            car.matrix.multiply(lanes[lane].matrix);
+            car.matrix.premultiply(toStartOfLane);
+            scene.add(car);
+    
+            cars.push([clock.getElapsedTime(), car])
+        }        
     }
 }

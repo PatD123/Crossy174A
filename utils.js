@@ -22,6 +22,23 @@ export function Car(){
     return car;
 }
 
+export function Tree() {
+    const treeGeometry = new THREE.CylinderGeometry(0.5, 2, 6, 12);
+    const trunkMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 });
+    const trunk = new THREE.Mesh(treeGeometry, trunkMaterial);
+
+    const foliageGeometry = new THREE.SphereGeometry(2, 12, 12); 
+    const foliageMaterial = new THREE.MeshPhongMaterial({ color: 0x228B22 });
+    const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+    foliage.position.y = 5;
+
+    const tree = new THREE.Group();
+    tree.add(trunk);
+    tree.add(foliage);
+
+    return tree;
+}
+
 export function translationMatrix(tx, ty, tz) {
 	return new THREE.Matrix4().set(
 		1, 0, 0, tx,
