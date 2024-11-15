@@ -43,26 +43,31 @@ scene.add(zAxis);
 
 // Handle keyboard input
 let move_dir_ = new THREE.Matrix4();
+let isMoving = false; 
+let targetPosition = new THREE.Vector3(0, 2, 0); 
 document.addEventListener('keydown', onKeyDown, false);
 function onKeyDown(event) {
+    if (isMoving) return;
+    
+    let movement = new THREE.Vector3();
     switch (event.keyCode) {
-        case 37:
-            // Left
-            move_dir_.copy(utils.translationMatrix(-4, 0, 0))
+        case 37: // Left
+            movement.set(-4, 0, 0);
             break;
-        case 38:
-            // Forward
-            move_dir_.copy(utils.translationMatrix(0, 0, -6))
+        case 38: // Forward
+            movement.set(0, 0, -6);
             break;
-        case 39:
-            // Right
-            move_dir_.copy(utils.translationMatrix(4, 0, 0))
+        case 39: // Right
+            movement.set(4, 0, 0);
             break;
-        case 40:
-            // Right
-            move_dir_.copy(utils.translationMatrix(0, 0, 6))
+        case 40: // Backward
+            movement.set(0, 0, 6);
             break;
+        default:
+            return;
     }
+    targetPosition.add(movement);
+    isMoving = true;    
 }
 
 // Adding Ambient Light
@@ -108,25 +113,31 @@ function animate() {
     let position = new THREE.Vector3();
     
     move_dir_.decompose(position, new THREE.Quaternion(), new THREE.Vector3());
-    if(position.length() != 0){
-        // let player_pos = new THREE.Vector3();
-        // player.matrix.decompose(player_pos, new THREE.Quaternion(), new THREE.Vector3());
+    if (isMoving) {
+        let player_pos = new THREE.Vector3();
+        player.matrix.decompose(player_pos, new THREE.Quaternion(), new THREE.Vector3());
         // const target = player_pos.clone().add(position);
         // Move player
-        // const smooth = player_pos.lerp(target, 0.1); // Adjust 0.1 for speed
-        // const trans = utils.translationMatrix(smooth.x - position.x,smooth.y - position.y, smooth.z - position.z);
-        player.matrix.premultiply(move_dir_);
-        camera.matrix.premultiply(move_dir_)
+        const smoothPos = player_pos.clone().lerp(targetPosition, 0.1); 
+        const transMat = utils.translationMatrix(smoothPos.x - player_pos.x, smoothPos.y - player_pos.y, smoothPos.z - player_pos.z);
+        player.matrix.premultiply(transMat);
+        player.matrixAutoUpdate = false;
+
         camera.matrixAutoUpdate = false;
-        camera.lookAt(player.position);
-        camera.matrix.decompose(camera.position, camera.quaternion, camera.scale);
-        camera.position.lerp(move_dir_, 0.1);
-        // Update current lane
-        if(position.z < 0) curr_lane_++;
-        else if(position.z > 0) curr_lane_--;
+        const cameraTargetPos = smoothPos.clone().add(new THREE.Vector3(0, 25, 25));
+        camera.position.lerp(cameraTargetPos, 0.1);
+        camera.lookAt(smoothPos);
+        
+        if (player_pos.distanceTo(targetPosition) < 0.1) {
+            player.matrix.copy(utils.translationMatrix(targetPosition.x, targetPosition.y, targetPosition.z));
+            isMoving = false; // Allow new movement input            
+        }
+        // // Update current lane
+        // if(position.z < 0) curr_lane_++;
+        // else if(position.z > 0) curr_lane_--;
 
         // Clear move direction
-        move_dir_.identity();
+        // move_dir_.identity();
     }
 
     // Moving our cars
