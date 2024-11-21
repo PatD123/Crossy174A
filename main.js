@@ -108,6 +108,7 @@ animate();
 function animate() {
     requestAnimationFrame(animate);
 
+    // Get modded time.
     let time = clock.getElapsedTime();
     let T = (time - time_of_jump) % 0.25;
 
@@ -115,6 +116,7 @@ function animate() {
     let moveDir = new THREE.Vector3();
     move_dir_.decompose(moveDir, new THREE.Quaternion(), new THREE.Vector3());
 
+    // Up hop and down hop
     var up = new THREE.Vector3();
     up.copy(moveDir);
     up.divideScalar(2);
@@ -127,21 +129,20 @@ function animate() {
     var new_cam_targetPosition = new THREE.Vector3();
 
     if (isMoving) {
-
-        let player_pos = new THREE.Vector3();
-        player.matrix.decompose(player_pos, new THREE.Quaternion(), new THREE.Vector3());
-
+        // If time is first part, we jump up.
         if(T < 0.125){
             new_targetPosition.addVectors(targetPosition, up);
             new_cam_targetPosition.addVectors(cam_targetPosition, up);
-            player.position.lerp(new_targetPosition, 0.6); 
+            player.position.lerp(new_targetPosition, 0.6); // Allows player to smoothly get to target location
         }
+        // If time is second part, we jump down.
         else{
             new_targetPosition.addVectors(targetPosition, down);
             new_cam_targetPosition.addVectors(cam_targetPosition, down);
-            player.position.lerp(new_targetPosition, 0.6); 
+            player.position.lerp(new_targetPosition, 0.6); // Allows player to smoothly get to target location
         }        
         
+        // If the distance to the target location is made ...
         if (T > 0.125 && player.position.distanceTo(new_targetPosition) < 0.01) {
             targetPosition.copy(new_targetPosition);
             cam_targetPosition.copy(new_cam_targetPosition);
@@ -154,15 +155,13 @@ function animate() {
             move_dir_.identity();
         }
 
+        // Have camera follow TRY and follow smoothly
         var h = new THREE.Vector3();
-
         // Smoothly interpolate the camera's position towards the target position
         camera.position.lerp(
             h.addVectors(player.position, new THREE.Vector3(25, 75, 75)), // Offset for better viewing
             0.05
         );
-
-        // camera.position.lerp(new_cam_targetPosition, 0.6);
         camera.lookAt(player.position);
 
     }
