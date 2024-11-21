@@ -5,7 +5,7 @@ import * as utils from './utils.js';
 // Clock for animation timing
 let clock = new THREE.Clock();
 
-// Our scene
+// Our scene    
 const scene = new THREE.Scene();
 
 const camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, 
@@ -41,41 +41,6 @@ scene.add(xAxis);
 scene.add(yAxis);
 scene.add(zAxis);
 
-// Handle keyboard input
-let move_dir_ = new THREE.Matrix4();
-let isMoving = false; 
-let targetPosition = new THREE.Vector3(0, 2, 0); 
-let cam_targetPosition = new THREE.Vector3(25, 75, 75);
-document.addEventListener('keydown', onKeyDown, false);
-function onKeyDown(event) {
-    // if (isMoving) return;
-    
-    let movement = new THREE.Vector3();
-    switch (event.keyCode) {
-        case 37: // Left
-            movement.set(-4, 0, 0);
-            move_dir_.copy(utils.translationMatrix(-4, 0, 0))
-            break;
-        case 38: // Forward
-            movement.set(0, 0, -6);
-            move_dir_.copy(utils.translationMatrix(0, 0, -6))
-            break;
-        case 39: // Right
-            movement.set(4, 0, 0);
-            move_dir_.copy(utils.translationMatrix(4, 0, 0))
-            break;
-        case 40: // Backward
-            movement.set(0, 0, 6);
-            move_dir_.copy(utils.translationMatrix(0, 0, 6))
-            break;
-        default:
-            return;
-    }
-    targetPosition.add(movement);
-    cam_targetPosition.add(movement);
-    isMoving = true;    
-}
-
 // Adding Ambient Light
 let ambientLight = new THREE.AmbientLight( 0xffffff, 0.5);
 ambientLight.power = 10**4
@@ -100,12 +65,43 @@ let player_geometry = new THREE.BoxGeometry(2, 2, 2);
 let player_material = new THREE.MeshPhongMaterial({color: 0xFF0000,
                                                     flatShading: true})
 let player = new THREE.Mesh(player_geometry, player_material);
-player.matrix.copy(utils.translationMatrix(0, 2, 0))
-player.matrixAutoUpdate = false;
+player.position.set(0, 2, 0);
 scene.add(player)
 
 // Adding a car
 randomIntervalPlacement();
+
+// Handle keyboard input
+let move_dir_ = new THREE.Matrix4();
+let isMoving = false; 
+let targetPosition = new THREE.Vector3(0, 2, 0); 
+let cam_targetPosition = new THREE.Vector3(25, 75, 75);
+let time_of_jump = 0.0;
+document.addEventListener('keydown', onKeyDown, false);
+function onKeyDown(event) {
+    if (isMoving) return;
+
+    time_of_jump = clock.getElapsedTime();
+    
+    switch (event.keyCode) {
+        case 37: // Left
+            move_dir_.copy(utils.translationMatrix(-4, 0, 0))
+            break;
+        case 38: // Forward
+            move_dir_.copy(utils.translationMatrix(0, 0, -6))
+            break;
+        case 39: // Right
+            move_dir_.copy(utils.translationMatrix(4, 0, 0))
+            break;
+        case 40: // Backward
+            move_dir_.copy(utils.translationMatrix(0, 0, 6))
+            break;
+        default:
+            return;
+    }
+    
+    isMoving = true;    
+}
 
 animate();
 
@@ -113,37 +109,54 @@ function animate() {
     requestAnimationFrame(animate);
 
     let time = clock.getElapsedTime();
-    let T = time % 20.0;
+    let T = (time - time_of_jump) % 0.25;
 
-    // Moving our player and camera to follow
-    let position = new THREE.Vector3();
-    
-    move_dir_.decompose(position, new THREE.Quaternion(), new THREE.Vector3());
+    // Get translation Vec3 of move_dir_
+    let moveDir = new THREE.Vector3();
+    move_dir_.decompose(moveDir, new THREE.Quaternion(), new THREE.Vector3());
+
+    var up = new THREE.Vector3();
+    up.copy(moveDir);
+    up.divideScalar(2);
+    up.y = 2.0;
+    var down = new THREE.Vector3();
+    down.copy(moveDir);
+
+
+    var new_targetPosition = new THREE.Vector3();
+    var new_cam_targetPosition = new THREE.Vector3();
+
     if (isMoving) {
+
         let player_pos = new THREE.Vector3();
         player.matrix.decompose(player_pos, new THREE.Quaternion(), new THREE.Vector3());
 
-        // Move player
-        const smoothPos = player_pos.clone().lerp(targetPosition, 0.1); 
-        const transMat = utils.translationMatrix(smoothPos.x - player_pos.x, smoothPos.y - player_pos.y, smoothPos.z - player_pos.z);
-        player.matrix.premultiply(transMat);
-        player.matrixAutoUpdate = false;
-
-        // Move camera
-        camera.position.lerp(cam_targetPosition, 0.1);
-        camera.lookAt(player.position);
-        camera.matrix.decompose(camera.position, camera.quaternion, camera.scale);
-        
-        if (player_pos.distanceTo(targetPosition) < 1) {
-            player.matrix.copy(utils.translationMatrix(targetPosition.x, targetPosition.y, targetPosition.z));
-            isMoving = false; // Allow new movement input            
+        if(T < 0.125){
+            new_targetPosition.addVectors(targetPosition, up);
+            new_cam_targetPosition.addVectors(cam_targetPosition, moveDir);
+            player.position.lerp(new_targetPosition, 0.6); 
         }
-        // // Update current lane
-        if(position.z < 0) curr_lane_++;
-        else if(position.z > 0) curr_lane_--;
+        else{
+            new_targetPosition.addVectors(targetPosition, down);
+            new_cam_targetPosition.addVectors(cam_targetPosition, moveDir);
+            player.position.lerp(new_targetPosition, 0.6); 
+        }        
+        
+        if (T > 0.125 && player.position.distanceTo(new_targetPosition) < 0.01) {
+            targetPosition.copy(new_targetPosition);
+            cam_targetPosition.copy(new_cam_targetPosition);
+            isMoving = false; // Allow new movement input
 
-        // Clear move direction
-        move_dir_.identity();
+            // Update current lane
+            if(moveDir.z < 0) curr_lane_++;
+            else if(moveDir.z > 0) curr_lane_--;
+
+            move_dir_.identity();
+        }
+
+        camera.position.lerp(new_cam_targetPosition, 0.6);
+        camera.lookAt(player.position);
+
     }
 
     // Moving our cars
