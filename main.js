@@ -8,9 +8,9 @@ let clock = new THREE.Clock();
 // Our scene    
 const scene = new THREE.Scene();
 
-const camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, 
-                                             window.innerHeight / 2, window.innerHeight / - 2, 1, 1000 );
-// const camera = new THREE.PerspectiveCamera( 35, window.innerWidth / window.innerHeight, 0.1, 1000 );
+// const camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, 
+//                                              window.innerHeight / 2, window.innerHeight / - 2, 1, 1000 );
+const camera = new THREE.PerspectiveCamera( 35, window.innerWidth / window.innerHeight, 0.1, 1000 );
 
 camera.position.set(25, 75, 75);
 camera.lookAt(0, 0, 0);
@@ -133,12 +133,12 @@ function animate() {
 
         if(T < 0.125){
             new_targetPosition.addVectors(targetPosition, up);
-            new_cam_targetPosition.addVectors(cam_targetPosition, moveDir);
+            new_cam_targetPosition.addVectors(cam_targetPosition, up);
             player.position.lerp(new_targetPosition, 0.6); 
         }
         else{
             new_targetPosition.addVectors(targetPosition, down);
-            new_cam_targetPosition.addVectors(cam_targetPosition, moveDir);
+            new_cam_targetPosition.addVectors(cam_targetPosition, down);
             player.position.lerp(new_targetPosition, 0.6); 
         }        
         
@@ -154,7 +154,15 @@ function animate() {
             move_dir_.identity();
         }
 
-        camera.position.lerp(new_cam_targetPosition, 0.6);
+        var h = new THREE.Vector3();
+
+        // Smoothly interpolate the camera's position towards the target position
+        camera.position.lerp(
+            h.addVectors(player.position, new THREE.Vector3(25, 75, 75)), // Offset for better viewing
+            0.05
+        );
+
+        // camera.position.lerp(new_cam_targetPosition, 0.6);
         camera.lookAt(player.position);
 
     }
