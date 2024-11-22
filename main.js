@@ -11,6 +11,8 @@ const scene = new THREE.Scene();
 // const camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, 
 //                                              window.innerHeight / 2, window.innerHeight / - 2, 1, 1000 );
 const camera = new THREE.PerspectiveCamera( 35, window.innerWidth / window.innerHeight, 0.1, 1000 );
+let cameraPerspective = 0; // 0 Per Cam
+                           // 1 FP Cam
 
 camera.position.set(25, 75, 75);
 camera.lookAt(0, 0, 0);
@@ -82,8 +84,12 @@ function onKeyDown(event) {
     if (isMoving) return;
 
     time_of_jump = clock.getElapsedTime();
-    
+    console.log(event.keyCode)
     switch (event.keyCode) {
+        case 67:
+            // Change camera perspective
+            cameraPerspective = cameraPerspective ? 0 : 1;
+            return;
         case 37: // Left
             move_dir_.copy(utils.translationMatrix(-4, 0, 0))
             break;
@@ -154,17 +160,10 @@ function animate() {
 
             move_dir_.identity();
         }
-
-        // Have camera follow TRY and follow smoothly
-        var h = new THREE.Vector3();
-        // Smoothly interpolate the camera's position towards the target position
-        camera.position.lerp(
-            h.addVectors(player.position, new THREE.Vector3(25, 75, 75)), // Offset for better viewing
-            0.05
-        );
-        camera.lookAt(player.position);
-
     }
+
+    // Render Perspective
+    renderPerspectives();
 
     // Moving our cars
     cars.forEach(([t, c], idx) => {
@@ -251,5 +250,29 @@ function addCars(){
     
             cars.push([clock.getElapsedTime(), car])
         }        
+    }
+}
+
+function renderPerspectives(){
+    if(cameraPerspective){
+        console.log("FP")
+        var h = new THREE.Vector3();
+        h.copy(player.position)
+        h.z -= 3;
+        camera.position.lerp(h, 0.1); 
+
+        const target = new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z - 1);
+        camera.lookAt(target);
+        // controls.update()
+    }
+    else{
+        // Have camera follow TRY and follow smoothly
+        var h = new THREE.Vector3();
+        // Smoothly interpolate the camera's position towards the target position
+        camera.position.lerp(
+            h.addVectors(player.position, new THREE.Vector3(25, 75, 75)), // Offset for better viewing
+            0.05
+        );
+        camera.lookAt(player.position);
     }
 }
