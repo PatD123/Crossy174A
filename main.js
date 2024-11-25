@@ -13,6 +13,7 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 35, window.innerWidth / window.innerHeight, 0.1, 1000 );
 let cameraPerspective = 0; // 0 Per Cam
                            // 1 FP Cam
+let cameraRotAngle = 0;
 
 camera.position.set(25, 75, 75);
 camera.lookAt(0, 0, 0);
@@ -55,8 +56,8 @@ scene.add(directionalLight)
 
 // Provisional Data
 let lanes = []
-
 let cars = []
+let trees = []
 
 // Adding lanes
 let curr_lane_ = 0;
@@ -84,7 +85,7 @@ function onKeyDown(event) {
     if (isMoving) return;
 
     time_of_jump = clock.getElapsedTime();
-    console.log(event.keyCode)
+
     switch (event.keyCode) {
         case 67:
             // Change camera perspective
@@ -108,6 +109,7 @@ function onKeyDown(event) {
     
     isMoving = true;    
 }
+
 
 animate();
 
@@ -170,6 +172,10 @@ function animate() {
         var d_x = 0.05 * (time - t);
         var d_x_M = utils.translationMatrix(d_x, 0, 0);
         c.matrix.premultiply(d_x_M);
+
+        var car_box = computeCarBB(c);
+        var player_box = computePlayerBB();
+        if(car_box.intersectsBox(player_box)) console.log("Game Over");
     })
     
 
@@ -215,6 +221,7 @@ function addLanes(){
                 tree.matrix.copy(treeMatrix);
                 tree.matrixAutoUpdate = false;
                 scene.add(tree);
+                trees.push(tree)
             }            
         }        
         scene.add(lane);
@@ -255,15 +262,12 @@ function addCars(){
 
 function renderPerspectives(){
     if(cameraPerspective){
-        console.log("FP")
         var h = new THREE.Vector3();
         h.copy(player.position)
         h.z -= 3;
         camera.position.lerp(h, 0.1); 
-
         const target = new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z - 1);
         camera.lookAt(target);
-        // controls.update()
     }
     else{
         // Have camera follow TRY and follow smoothly
@@ -275,4 +279,31 @@ function renderPerspectives(){
         );
         camera.lookAt(player.position);
     }
+}
+
+function computeCarBB(car){
+
+    // Decompose matrix to get position
+    car.matrix.decompose(car.position, car.quaternion, car.scale)
+
+    // Compute bounding box to use
+    car.geometry.computeBoundingBox();
+
+    // Change bounding box to be relative to position of car
+    var car_box = car.geometry.boundingBox.clone();
+    car_box.translate(car.position);
+
+    return car_box;
+}
+
+function computePlayerBB(){
+
+    // Compute bounding box to use
+    player.geometry.computeBoundingBox();
+
+    // Change bounding box to be relative to position of car
+    var player_box = player.geometry.boundingBox.clone();
+    player_box.translate(player.position);
+
+    return player_box;
 }
