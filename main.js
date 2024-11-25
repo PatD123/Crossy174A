@@ -58,6 +58,7 @@ scene.add(directionalLight)
 let lanes = []
 let cars = []
 let trees = []
+let death = false;
 
 // Adding lanes
 let curr_lane_ = 0;
@@ -65,6 +66,7 @@ addLanes();
 
 // Adding character
 let player_geometry = new THREE.BoxGeometry(2, 2, 2);
+let player_death_geometry = new THREE.CylinderGeometry(3, 3, 0, 12);
 let player_material = new THREE.MeshPhongMaterial({color: 0xFF0000,
                                                     flatShading: true})
 let player = new THREE.Mesh(player_geometry, player_material);
@@ -83,6 +85,8 @@ let time_of_jump = 0.0;
 document.addEventListener('keydown', onKeyDown, false);
 function onKeyDown(event) {
     if (isMoving) return;
+
+    if(death) return;
 
     time_of_jump = clock.getElapsedTime();
 
@@ -175,7 +179,11 @@ function animate() {
 
         var car_box = computeCarBB(c);
         var player_box = computePlayerBB();
-        if(car_box.intersectsBox(player_box)) console.log("Game Over");
+        if(car_box.intersectsBox(player_box)) {
+            console.log("Game Over");
+            death = true;
+            player.geometry = player_death_geometry;
+        }
     })
     
 
