@@ -56,8 +56,9 @@ scene.add(directionalLight)
 
 // Provisional Data
 let lanes = []
-let cars = []
 let trees = []
+let safeLanes = []
+let cars = []
 let death = false;
 
 // Adding lanes
@@ -96,15 +97,19 @@ function onKeyDown(event) {
             cameraPerspective = cameraPerspective ? 0 : 1;
             return;
         case 37: // Left
+            if(checkForTrees(new THREE.Vector3(-4, 0, 0))) return;
             move_dir_.copy(utils.translationMatrix(-4, 0, 0))
             break;
         case 38: // Forward
+            if(checkForTrees(new THREE.Vector3(0, 0, -6))) return;
             move_dir_.copy(utils.translationMatrix(0, 0, -6))
             break;
         case 39: // Right
+            if(checkForTrees(new THREE.Vector3(4, 0, 0))) return;
             move_dir_.copy(utils.translationMatrix(4, 0, 0))
             break;
         case 40: // Backward
+            if(checkForTrees(new THREE.Vector3(0, 0, 6))) return;
             move_dir_.copy(utils.translationMatrix(0, 0, 6))
             break;
         default:
@@ -184,8 +189,7 @@ function animate() {
             death = true;
             player.geometry = player_death_geometry;
         }
-    })
-    
+    })    
 
     if(curr_lane_ === lanes.length - 5) addLanes();
 
@@ -229,11 +233,12 @@ function addLanes(){
                 tree.matrix.copy(treeMatrix);
                 tree.matrixAutoUpdate = false;
                 scene.add(tree);
-                trees.push(tree)
-            }            
+                trees.push(tree);
+            }
+            safeLanes.push(i);
         }        
         scene.add(lane);
-        lanes.push(lane)
+        lanes.push(lane);
     }
 }
 
@@ -314,4 +319,29 @@ function computePlayerBB(){
     player_box.translate(player.position);
 
     return player_box;
+}
+
+function checkForTrees(dir){
+    var fut_pos = new THREE.Vector3();
+
+    // Gets the future position of the player
+    fut_pos.addVectors(player.position, dir);
+    
+    // If we are moving out player forward
+    var possible_dz = ((dir.z > 0 && safeLanes.includes(curr_lane_ - 1)) || (dir.z < 0 && safeLanes.includes(curr_lane_ + 1)) && curr_lane_ != 0);
+    var possible_dx = ((dir.x > 0 && safeLanes.includes(curr_lane_)) || (dir.x < 0 && safeLanes.includes(curr_lane_)));
+    if(possible_dx || possible_dz){
+        var flag = false;
+        trees.forEach((t, idx) => {
+            let bb = new THREE.Box3().setFromObject(t);
+            if(bb.containsPoint(fut_pos)) {
+                flag = true;
+                return true;
+            }
+        })
+        if(flag) return true;
+        else return false;
+    }
+
+    return false;
 }
