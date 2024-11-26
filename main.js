@@ -221,15 +221,19 @@ function addLanes(){
     var end = start + 10;
     for(var i = start; i<end; i++){
         var lane = utils.Lane(i)
-
         if (i % 4 === 0) {
             lane.material = new THREE.MeshPhongMaterial({ color: 0x00FF00, flatShading: true });
             const numTrees = Math.floor(Math.random() * 3) + 1;
             for (let j = 0; j < numTrees; j++) {
                 const tree = utils.Tree();
-                const treeX = (Math.random() * 72 - 36 ) / 2; 
+                const treeX = (Math.random() * 72 - 36) / 2;
+                // Make tree not spawn on top of player on spawn
+                if (i == 0 && (treeX > -6 && treeX < 6)) {
+                    continue;
+                }
+                // console.log(treeX);
                 const treeZ = i * -6; // Lane position
-                const treeMatrix = utils.translationMatrix(treeX, 0, treeZ);
+                const treeMatrix = utils.translationMatrix(treeX, 4, treeZ);
                 tree.matrix.copy(treeMatrix);
                 tree.matrixAutoUpdate = false;
                 scene.add(tree);
