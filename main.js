@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import * as utils from './utils.js';
 
 // Clock for animation timing
@@ -14,6 +15,36 @@ const camera = new THREE.PerspectiveCamera( 35, window.innerWidth / window.inner
 let cameraPerspective = 0; // 0 Per Cam
                            // 1 FP Cam
 let cameraRotAngle = 0;
+
+// OBJ Loader
+const loader = new OBJLoader();
+let bear = new THREE.Group();
+// Load a resource
+loader.load(
+	// resource URL
+	'models/bear.obj',
+	// called when resource is loaded
+	function ( object ) {
+        bear = object;
+        object.position.set(0, 1, -7);
+        object.scale.set(0.007, 0.007, -0.007)
+        console.log(object);
+		scene.add( object );
+
+	},
+	// called when loading is in progresses
+	function ( xhr ) {
+
+		console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+
+	},
+	// called when loading has errors
+	function ( error ) {
+
+		console.log( 'An error happened' );
+
+	}
+);
 
 camera.position.set(25, 75, 75);
 camera.lookAt(0, 0, 0);
@@ -327,11 +358,15 @@ function checkForTrees(dir){
     // Gets the future position of the player
     fut_pos.addVectors(player.position, dir);
     
-    // If we are moving out player forward
+    // If we are moving out player forward or backward
+    // Curr lane has to be in the safelane or the one in the future has to be in the safelanes.
     var possible_dz = ((dir.z > 0 && safeLanes.includes(curr_lane_ - 1)) || (dir.z < 0 && safeLanes.includes(curr_lane_ + 1)) && curr_lane_ != 0);
     var possible_dx = ((dir.x > 0 && safeLanes.includes(curr_lane_)) || (dir.x < 0 && safeLanes.includes(curr_lane_)));
     if(possible_dx || possible_dz){
         var flag = false;
+
+        // Look thru each tree to see if we have an intersection
+        // We should sort the trees and binary search tbh.....
         trees.forEach((t, idx) => {
             let bb = new THREE.Box3().setFromObject(t);
             if(bb.containsPoint(fut_pos)) {
@@ -339,7 +374,10 @@ function checkForTrees(dir){
                 return true;
             }
         })
+
+        // If flag has been set, there was a tree where we were trying to go.
         if(flag) return true;
+        // Else we return.
         else return false;
     }
 
