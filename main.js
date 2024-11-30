@@ -9,6 +9,7 @@ let clock = new THREE.Clock();
 // Our scene    
 const scene = new THREE.Scene();
 
+// CAMERA VARIABLES
 // const camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, 
 //                                              window.innerHeight / 2, window.innerHeight / - 2, 1, 1000 );
 const camera = new THREE.PerspectiveCamera( 35, window.innerWidth / window.innerHeight, 0.1, 1000 );
@@ -108,6 +109,16 @@ scene.add(player)
 // Adding a car
 randomIntervalPlacement();
 
+window.addEventListener( 'pointermove', onPointerMove );
+// RAYCASTER FOR MOUSE VECTORS
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+function onPointerMove( event ) {
+    // Calculates new position of mouse at all 
+	pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+}
+
 // Handle keyboard input
 let move_dir_ = new THREE.Matrix4();
 let isMoving = false; 
@@ -121,25 +132,25 @@ function onKeyDown(event) {
     if(death) return;
 
     time_of_jump = clock.getElapsedTime();
-
+    
     switch (event.keyCode) {
         case 67:
             // Change camera perspective
             cameraPerspective = cameraPerspective ? 0 : 1;
             return;
-        case 37: // Left
+        case 65: // Left
             if(checkForTrees(new THREE.Vector3(-4, 0, 0))) return;
             move_dir_.copy(utils.translationMatrix(-4, 0, 0))
             break;
-        case 38: // Forward
+        case 87: // Forward
             if(checkForTrees(new THREE.Vector3(0, 0, -6))) return;
             move_dir_.copy(utils.translationMatrix(0, 0, -6))
             break;
-        case 39: // Right
+        case 68: // Right
             if(checkForTrees(new THREE.Vector3(4, 0, 0))) return;
             move_dir_.copy(utils.translationMatrix(4, 0, 0))
             break;
-        case 40: // Backward
+        case 83: // Backward
             if(checkForTrees(new THREE.Vector3(0, 0, 6))) return;
             move_dir_.copy(utils.translationMatrix(0, 0, 6))
             break;
@@ -310,11 +321,17 @@ function addCars(){
 
 function renderPerspectives(){
     if(cameraPerspective){
+        // First person
+
         var h = new THREE.Vector3();
         h.copy(player.position)
         h.z -= 3;
         camera.position.lerp(h, 0.1); 
         const target = new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z - 1);
+
+        // Target is the center of the screen. The onPointerMove calculates mouse position
+        // relative to the center so we can just subtract
+        target.sub(new THREE.Vector3(-pointer.x * 2, -pointer.y * 1.2, 0))
         camera.lookAt(target);
     }
     else{
