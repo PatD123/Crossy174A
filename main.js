@@ -50,6 +50,11 @@ loader.load(
 camera.position.set(25, 75, 75);
 camera.lookAt(0, 0, 0);
 
+// Retry if dead
+document.addEventListener("click", (e) => {
+    if(e.target.tagName === "BUTTON") window.location.reload();
+})
+
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
@@ -109,6 +114,7 @@ scene.add(player)
 // Adding a car
 randomIntervalPlacement();
 
+// Updating mouse pointer locations
 window.addEventListener( 'pointermove', onPointerMove );
 // RAYCASTER FOR MOUSE VECTORS
 const raycaster = new THREE.Raycaster();
@@ -129,10 +135,10 @@ document.addEventListener('keydown', onKeyDown, false);
 function onKeyDown(event) {
     if (isMoving) return;
 
-    if(death) return;
+    if(death && event.keyCode != 67) return;
 
     time_of_jump = clock.getElapsedTime();
-    
+
     switch (event.keyCode) {
         case 67:
             // Change camera perspective
@@ -210,6 +216,8 @@ function animate() {
             // Update current lane
             if(moveDir.z < 0) curr_lane_++;
             else if(moveDir.z > 0) curr_lane_--;
+
+            document.getElementById("counter").innerText = curr_lane_;
 
             move_dir_.identity();
         }
@@ -325,7 +333,7 @@ function renderPerspectives(){
 
         var h = new THREE.Vector3();
         h.copy(player.position)
-        h.z -= 3;
+        h.z -= 2.5;
         camera.position.lerp(h, 0.1); 
         const target = new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z - 1);
 
