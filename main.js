@@ -92,11 +92,14 @@ directionalLight.position.set(0, 2, 0)
 scene.add(directionalLight)
 
 // Provisional Data
-let lanes = []
-let trees = []
-let safeLanes = []
-let cars = []
+let lanes = [];
+let trees = [];
+let safeLanes = [0];
+let rivers = [];
+let cars = [];
+let logs = [];
 let death = false;
+let attached_log;
 
 // Adding lanes
 let curr_lane_ = 0;
@@ -138,6 +141,12 @@ function onKeyDown(event) {
     if(death && event.keyCode != 67) return;
 
     time_of_jump = clock.getElapsedTime();
+
+    // Detach from attached log
+    if(attached_log) {
+        attached_log.remove( player );
+        player.matrixWorld.decompose( player.position, player.quaternion, player.scale );
+    }
 
     switch (event.keyCode) {
         case 67:
@@ -232,6 +241,7 @@ function animate() {
         var d_x_M = utils.translationMatrix(d_x, 0, 0);
         c.matrix.premultiply(d_x_M);
 
+        // Collision Detection for cars and player
         var car_box = computeCarBB(c);
         var player_box = computePlayerBB();
         if(car_box.intersectsBox(player_box)) {
@@ -239,7 +249,18 @@ function animate() {
             death = true;
             player.geometry = player_death_geometry;
         }
-    })    
+    })   
+    
+    // Moving our logs
+    logs.forEach(([t, l], idx) => {
+        var d_x = 0.05 * (time - t);
+        var d_x_M = utils.translationMatrix(d_x, 0, 0);
+        l.matrix.premultiply(d_x_M);
+
+        // Attaching a car
+        var log_box = computeCarBB(l)
+        var player_box = computePlayerBB();
+    }) 
 
     if(curr_lane_ === lanes.length - 5) addLanes();
 
@@ -263,6 +284,19 @@ function cleanUp(){
         }
     }
 
+    // If logs go out of bounds, we cull them out
+    for(var i = logs.length - 1; i>=0; i--){
+        var [t, l] = logs[i];
+        let log_position = new THREE.Vector3();
+        l.matrix.decompose(log_position, new THREE.Quaternion(), new THREE.Vector3());
+        if(log_position.x >= 25){
+            l.material.dispose()
+            l.geometry.dispose()
+            scene.remove(l);
+            l = null
+        }
+    }
+
     // Clean up out of scene lanes
 }
 
@@ -270,29 +304,38 @@ function addLanes(){
     var start = lanes.length;
     var end = start + 10;
     for(var i = start; i<end; i++){
-        var lane = utils.Lane(i)
-        if (i % 4 === 0) {
-            lane.material = new THREE.MeshPhongMaterial({ color: 0x00FF00, flatShading: true });
-            const numTrees = Math.floor(Math.random() * 3) + 1;
-            for (let j = 0; j < numTrees; j++) {
-                const tree = utils.Tree();
-                const treeX = (Math.random() * 72 - 36) / 2;
-                // Make tree not spawn on top of player on spawn
-                if (i == 0 && (treeX > -6 && treeX < 6)) {
-                    continue;
+        if(i % 6 == 0 && i != 0){
+            var river = utils.River(i);
+            scene.add(river);
+            rivers.push(i);
+            lanes.push(river)
+        }
+        else{
+            var lane = utils.Lane(i)
+            if (i % 4 === 0) {
+                lane.material = new THREE.MeshPhongMaterial({ color: 0x00FF00, flatShading: true });
+                const numTrees = Math.floor(Math.random() * 3) + 1;
+                for (let j = 0; j < numTrees; j++) {
+                    const tree = utils.Tree();
+                    const treeX = (Math.random() * 72 - 36) / 2;
+                    // Make tree not spawn on top of player on spawn
+                    if (i == 0 && (treeX > -6 && treeX < 6)) {
+                        continue;
+                    }
+
+                    const treeZ = i * -6; // Lane position
+                    const treeMatrix = utils.translationMatrix(treeX, 4, treeZ);
+                    tree.matrix.copy(treeMatrix);
+                    tree.matrixAutoUpdate = false;
+                    scene.add(tree);
+                    trees.push(tree);
                 }
-                // console.log(treeX);
-                const treeZ = i * -6; // Lane position
-                const treeMatrix = utils.translationMatrix(treeX, 4, treeZ);
-                tree.matrix.copy(treeMatrix);
-                tree.matrixAutoUpdate = false;
-                scene.add(tree);
-                trees.push(tree);
+                console.log(i);
+                safeLanes.push(i);
             }
-            safeLanes.push(i);
-        }        
-        scene.add(lane);
-        lanes.push(lane);
+            scene.add(lane);
+            lanes.push(lane);
+        }
     }
 }
 
@@ -304,19 +347,20 @@ function randomIntervalPlacement() {
 
 function addCars(){
     var toStartOfLane = utils.translationMatrix(-22.5, 0, 0);
+    // Get a near lane to place a car
     var lane = utils.getRandomNearLane(curr_lane_, lanes.length);
-    if (lane % 4 != 0) {
-        var car = utils.Car();
-        car.matrix.multiply(lanes[lane].matrix);
-        car.matrix.premultiply(toStartOfLane);
-        scene.add(car);
+    // Guarantees that we find a near lane.
+    while(safeLanes.includes(lane) || rivers.includes(lane))lane = utils.getRandomNearLane(curr_lane_, lanes.length);
+    var car = utils.Car();
+    car.matrix.multiply(lanes[lane].matrix);
+    car.matrix.premultiply(toStartOfLane);
+    scene.add(car);
+    cars.push([clock.getElapsedTime(), car])
 
-        cars.push([clock.getElapsedTime(), car])
-    }
-
+    // Placing a car in a farther lane
     for(var i = 0; i<4; i++){
         var lane = utils.getRandomFarLane(curr_lane_, lanes.length);
-        if (lane % 4 != 0) {
+        if (!safeLanes.includes(lane) && !rivers.includes(lane)) {
             var car = utils.Car();
             car.matrix.multiply(lanes[lane].matrix);
             car.matrix.premultiply(toStartOfLane);
@@ -325,6 +369,18 @@ function addCars(){
             cars.push([clock.getElapsedTime(), car])
         }        
     }
+
+    // For logs
+    if(rivers.length > 0){
+        var lane = Math.floor(Math.random() * rivers.length);
+        var log = utils.Log();
+        log.matrix.multiply(lanes[rivers[lane]].matrix);
+        log.matrix.premultiply(toStartOfLane);
+        scene.add(log);
+
+        logs.push([clock.getElapsedTime(), log])
+    }
+    
 }
 
 function renderPerspectives(){

@@ -1,14 +1,43 @@
 import * as THREE from 'three';
 
 export function Lane(idx){
-    let lane_geometry = new THREE.BoxGeometry(50, 2, 5)
-    let lane_material = new THREE.MeshPhongMaterial({color: 0x808080,
+    // var type_of_lane = Math.floor(Math.random() * 5);
+
+    // if(type_of_lane < 4){
+        let lane_geometry = new THREE.BoxGeometry(50, 2, 5)
+        let lane_material = new THREE.MeshPhongMaterial({color: 0x808080,
+                                                            flatShading: true})
+        let lane = new THREE.Mesh(lane_geometry, lane_material)
+        lane.matrix.copy(translationMatrix(0, 0, -6 * idx))
+        lane.matrixAutoUpdate = false;
+        
+        return lane
+    // }
+    // else{
+    //     return River(idx);
+    // }
+}
+
+export function River(idx){
+    let river_geometry = new THREE.BoxGeometry(50, 2, 5)
+    let river_material = new THREE.MeshPhongMaterial({color: 0x40E0D0,
                                                         flatShading: true})
-    let lane = new THREE.Mesh(lane_geometry, lane_material)
-    lane.matrix.copy(translationMatrix(0, 0, -6 * idx))
-    lane.matrixAutoUpdate = false;
+    let river = new THREE.Mesh(river_geometry, river_material)
+    river.matrix.copy(translationMatrix(0, 0, -6 * idx))
+    river.matrixAutoUpdate = false;
     
-    return lane
+    return river
+}
+
+export function Log(){
+    let log_geometry = new THREE.BoxGeometry(5, 2, 3)
+    let log_material = new THREE.MeshPhongMaterial({color: 0x964B00,
+                                                        flatShading: true})
+    let log = new THREE.Mesh(log_geometry, log_material)
+    log.matrix.copy(translationMatrix(0, 0.5, 0))
+    log.matrixAutoUpdate = false;
+
+    return log;
 }
 
 export function Car(){
@@ -22,7 +51,7 @@ export function Car(){
     return car;
 }
 
-export function Tree() {
+export function Tree() {    
     const treeGeometry = new THREE.CylinderGeometry(0.5, 2, 6, 12);
     const trunkMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 });
     const trunk = new THREE.Mesh(treeGeometry, trunkMaterial);
