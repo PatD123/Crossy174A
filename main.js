@@ -146,6 +146,11 @@ function onKeyDown(event) {
     if(attached_log) {
         attached_log.remove( player );
         player.matrixWorld.decompose( player.position, player.quaternion, player.scale );
+        player.position.set(player.position.x, player.position.y - 0.5, player.position.z)
+        targetPosition.copy(player.position)
+        cam_targetPosition.copy(camera.position)
+        scene.add(player)
+        attached_log = null
     }
 
     switch (event.keyCode) {
@@ -258,8 +263,14 @@ function animate() {
         l.matrix.premultiply(d_x_M);
 
         // Attaching a car
-        var log_box = computeCarBB(l)
+        var log_box = computeCarBB(l) // Logs and cars are basically the same thing
+        var lane_box = computeCarBB(lanes[curr_lane_]) // Lanes, logs, and cars are basically the same thing
         var player_box = computePlayerBB();
+        if(log_box.intersectsBox(player_box) && !isMoving) {
+            player.position.set(0, 2, 0)
+            l.add(player)
+            attached_log = l
+        }
     }) 
 
     if(curr_lane_ === lanes.length - 5) addLanes();
@@ -306,8 +317,11 @@ function addLanes(){
     for(var i = start; i<end; i++){
         if(i % 6 == 0 && i != 0){
             var river = utils.River(i);
+            // Add river to scene
             scene.add(river);
+            // Add index to indices of river lanes
             rivers.push(i);
+            // Add the actual river as a lane
             lanes.push(river)
         }
         else{
@@ -384,11 +398,15 @@ function addCars(){
 }
 
 function renderPerspectives(){
+    // Camera always looks at at the world coordinates of the player.
+    var player_world_pos = new THREE.Vector3();
+    player.getWorldPosition(player_world_pos)
+
     if(cameraPerspective){
         // First person
 
         var h = new THREE.Vector3();
-        h.copy(player.position)
+        h.copy(player_world_pos)
         h.z -= 2.5;
         camera.position.lerp(h, 0.1); 
         const target = new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z - 1);
@@ -399,14 +417,18 @@ function renderPerspectives(){
         camera.lookAt(target);
     }
     else{
+        // Third-Person
+
         // Have camera follow TRY and follow smoothly
         var h = new THREE.Vector3();
         // Smoothly interpolate the camera's position towards the target position
         camera.position.lerp(
-            h.addVectors(player.position, new THREE.Vector3(25, 75, 75)), // Offset for better viewing
+            h.addVectors(player_world_pos, new THREE.Vector3(25, 75, 75)), // Offset for better viewing
             0.05
         );
-        camera.lookAt(player.position);
+        
+        // Looking at the world coordinates for the player
+        camera.lookAt(player_world_pos);
     }
 }
 
