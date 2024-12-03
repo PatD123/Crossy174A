@@ -99,7 +99,7 @@ let rivers = [];
 let cars = [];
 let logs = [];
 let death = false;
-let attached_log;
+let attached_log = null;
 
 // Adding lanes
 let curr_lane_ = 0;
@@ -131,7 +131,7 @@ function onPointerMove( event ) {
 // Handle keyboard input
 let move_dir_ = new THREE.Matrix4();
 let isMoving = false; 
-let targetPosition = new THREE.Vector3(0, 2, 0); 
+let targetPosition = new THREE.Vector3(0, 1.9, 0); 
 let cam_targetPosition = new THREE.Vector3(25, 75, 75);
 let time_of_jump = 0.0;
 document.addEventListener('keydown', onKeyDown, false);
@@ -186,6 +186,8 @@ animate();
 
 function animate() {
     requestAnimationFrame(animate);
+
+    console.log(player.position)
 
     // Get modded time.
     let time = clock.getElapsedTime();
@@ -256,6 +258,9 @@ function animate() {
         }
     })   
     
+    var lane_box = computeCarBB(lanes[curr_lane_]) // Lanes, logs, and cars are basically the same thing
+    var player_box = computePlayerBB();
+
     // Moving our logs
     logs.forEach(([t, l], idx) => {
         var d_x = 0.05 * (time - t);
@@ -264,14 +269,20 @@ function animate() {
 
         // Attaching a car
         var log_box = computeCarBB(l) // Logs and cars are basically the same thing
-        var lane_box = computeCarBB(lanes[curr_lane_]) // Lanes, logs, and cars are basically the same thing
-        var player_box = computePlayerBB();
         if(log_box.intersectsBox(player_box) && !isMoving) {
-            player.position.set(0, 2, 0)
+            player.position.set(0, 1.9, 0)
             l.add(player)
             attached_log = l
         }
     }) 
+
+    if(attached_log == null && rivers.includes(curr_lane_) && !isMoving){
+        if(lane_box.intersectsBox(player_box)){
+            console.log("Game Over");
+            death = true;
+            player.geometry = player_death_geometry;
+        }
+    }
 
     if(curr_lane_ === lanes.length - 5) addLanes();
 
@@ -344,7 +355,6 @@ function addLanes(){
                     scene.add(tree);
                     trees.push(tree);
                 }
-                console.log(i);
                 safeLanes.push(i);
             }
             scene.add(lane);
