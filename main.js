@@ -220,7 +220,7 @@ function animate() {
         else{
             new_targetPosition.addVectors(targetPosition, down);
             new_cam_targetPosition.addVectors(cam_targetPosition, down);
-            player.position.lerp(new_targetPosition, 0.6); // Allows player to smoothly get to target location
+            player.position.lerp(new_targetPosition, 0.9); // Allows player to smoothly get to target location
         }        
         
         // If the distance to the target location is made ...
