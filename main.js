@@ -611,12 +611,10 @@ function addBackground() {
         let isSafe = true;
         const type = Math.random();
         //make sure adjacent rivers don't spawn since its hard to align logs for a path
-        if (type < 0.2) {
+        if (type < 0.3) {
             isRiver = true;
         } 
-        else if (type < 0.35) {
-            isSafe = true;
-        }
+
         let lane = null;
 
         if (isRiver) {
@@ -633,8 +631,15 @@ function addBackground() {
     let sky = utils.createSky();
     let sun = utils.createSun();
     scene.add(sky);
-    scene.add(sun);    
+    scene.add(sun);   
+    // addTexturedClouds()
+
 }
 
-
+function addTexturedClouds(numClouds = 20) {
+    for (let i = 0; i < numClouds; i++) {
+        const cloud = createTexturedCloud();
+        scene.add(cloud);
+    }
+}
 

@@ -116,9 +116,9 @@ export function Tree() {
 }
 
 export function createSky() {
-    const skyGeometry = new THREE.SphereGeometry(500, 32, 32); // Large enough to enclose the scene
+    const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
     const skyMaterial = new THREE.MeshPhongMaterial({
-        color: 0x87CEEB, // Sky blue
+        color: 0x7BD9F6, // Sky blue
         side: THREE.BackSide, // Render inside the sphere
     });
     const sky = new THREE.Mesh(skyGeometry, skyMaterial);
@@ -135,6 +135,25 @@ export function createSun() {
 
     sun.position.set(200, 200, -300);
     return sun;
+}
+
+export function createTexturedCloud() {
+    const textureLoader = new THREE.TextureLoader();
+    const cloudTexture = textureLoader.load("./textures/cloud_texture.avif");
+    const cloudMaterial = new THREE.MeshBasicMaterial({
+        map: cloudTexture,
+        transparent: true,
+    });
+    const cloudGeometry = new THREE.PlaneGeometry(50, 30);
+    const cloud = new THREE.Mesh(cloudGeometry, cloudMaterial);
+
+    cloud.position.set(
+        Math.random() * 400 - 200, // X
+        Math.random() * 200 + 100, // Y
+        Math.random() * 400 - 200  // Z
+    );
+    cloud.rotation.y = Math.random() * Math.PI * 2;
+    return cloud;
 }
 
 export function translationMatrix(tx, ty, tz) {
