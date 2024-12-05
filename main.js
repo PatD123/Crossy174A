@@ -213,6 +213,7 @@ function animate() {
     var new_cam_targetPosition = new THREE.Vector3();
     
     if (isMoving) {
+        console.log(targetPosition);
         // If time is first part, we jump up.
         if (targetPosition.z > 0) {
         }
@@ -352,7 +353,7 @@ function addLanes(){
                 const numTrees = Math.floor(Math.random() * 3) + 1;
                 for (let j = 0; j < numTrees; j++) {
                     const tree = utils.Tree();
-                    const treeX = (Math.random() * 72 - 36) / 2;
+                    const treeX = Math.floor((Math.random() * 48 - 24) / 4) * 4;
                     // Make tree not spawn on top of player on spawn
                     if (i == 0 && (treeX > -6 && treeX < 6)) {
                         continue;
