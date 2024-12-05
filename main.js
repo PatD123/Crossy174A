@@ -113,6 +113,7 @@ let attached_log = null;
 
 // Adding lanes
 let curr_lane_ = 0;
+addBackground();
 addLanes();
 
 // Score Calculation
@@ -407,7 +408,6 @@ function addLanes(){
         // otherwise randomly generate a lane type
         if (!isRiver && !isSafe) {
             const type = Math.random();
-            console.log(lastRiver, i)
             //make sure adjacent rivers don't spawn since its hard to align logs for a path
             if (type < 0.2 && lastRiver + 1 != i) {
                 isRiver = true;
@@ -432,7 +432,7 @@ function addLanes(){
             var lane = utils.Lane(i)
             //safe lanes
             if (isSafe || i == 0) {
-                lane.material = new THREE.MeshPhongMaterial({ color: 0x00FF00, flatShading: true });
+                var safeLane = utils.safeLane(i);
                 const numTrees = Math.floor(Math.random() * 6) + 1;
                 
                 //create a list to hold all of the boundary boxes for the trees
@@ -458,16 +458,18 @@ function addLanes(){
                     const treeBoundingBox = new THREE.Box3().setFromObject(tree);
                     boundingBoxes[i].push(treeBoundingBox);
                 }
-                console.log(boundingBoxes);
                 safeLanes.push(i);
+                scene.add(safeLane);
+                lanes.push(safeLane);
                 lastSafeLane = i;
             }
+            
+            //normal lanes           
             else {
                 car_direction[i] = Math.random() < 0.5 ? 1 : -1;
+                scene.add(lane);
+                lanes.push(lane);                
             }
-            //normal lanes
-            scene.add(lane);
-            lanes.push(lane);
         }
     }
 }
@@ -602,3 +604,37 @@ function checkForTrees(dir){
     }
     return false;
 }
+
+function addBackground() {
+    for (let i = -10; i < 0; i++) {
+        let isRiver = false;
+        let isSafe = true;
+        const type = Math.random();
+        //make sure adjacent rivers don't spawn since its hard to align logs for a path
+        if (type < 0.2) {
+            isRiver = true;
+        } 
+        else if (type < 0.35) {
+            isSafe = true;
+        }
+        let lane = null;
+
+        if (isRiver) {
+            lane = utils.River(i);
+            river_meshes.push(lane);
+        }
+
+        else if (isSafe) {
+            lane = utils.safeLane(i);
+        }
+        scene.add(lane);
+    }
+    // Add the sky to the scene
+    let sky = utils.createSky();
+    let sun = utils.createSun();
+    scene.add(sky);
+    scene.add(sun);    
+}
+
+
+

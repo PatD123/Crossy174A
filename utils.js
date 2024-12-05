@@ -88,6 +88,16 @@ export function Car(){
     return car;
 }
 
+export function safeLane(idx) {
+    let lane_geometry = new THREE.BoxGeometry(300, 2, 6)
+    let lane_material = new THREE.MeshPhongMaterial({ color: 0x00FF00, flatShading: true });
+    let lane = new THREE.Mesh(lane_geometry, lane_material)
+    lane.matrix.copy(translationMatrix(0, 0, -6 * idx))
+    lane.matrixAutoUpdate = false;
+    
+    return lane
+}
+
 export function Tree() {    
     const treeGeometry = new THREE.CylinderGeometry(0.5, 2, 6, 12);
     const trunkMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 });
@@ -103,6 +113,28 @@ export function Tree() {
     tree.add(foliage);
 
     return tree;
+}
+
+export function createSky() {
+    const skyGeometry = new THREE.SphereGeometry(500, 32, 32); // Large enough to enclose the scene
+    const skyMaterial = new THREE.MeshPhongMaterial({
+        color: 0x87CEEB, // Sky blue
+        side: THREE.BackSide, // Render inside the sphere
+    });
+    const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+    return sky;
+}
+
+export function createSun() {
+    const sunGeometry = new THREE.SphereGeometry(50, 32, 32); // Adjust size
+    const sunMaterial = new THREE.MeshBasicMaterial({
+        color: 0xFFFF00, // Yellow
+        emissive: 0xFFFF00, // Glow effect
+    });
+    const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+
+    sun.position.set(200, 200, -300);
+    return sun;
 }
 
 export function translationMatrix(tx, ty, tz) {
