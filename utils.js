@@ -4,7 +4,7 @@ export function Lane(idx){
     // var type_of_lane = Math.floor(Math.random() * 5);
 
     // if(type_of_lane < 4){
-        let lane_geometry = new THREE.BoxGeometry(300, 2, 5)
+        let lane_geometry = new THREE.BoxGeometry(300, 2, 6)
         let lane_material = new THREE.MeshPhongMaterial({color: 0x808080,
                                                             flatShading: true})
         let lane = new THREE.Mesh(lane_geometry, lane_material)
