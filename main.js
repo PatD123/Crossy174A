@@ -97,6 +97,7 @@ let boundingBoxes = {};
 let trees = [];
 let safeLanes = [0];
 let rivers = [];
+let river_meshes = [];
 let cars = [];
 let logs = [];
 let death = false;
@@ -192,6 +193,13 @@ function animate() {
     requestAnimationFrame(animate);
 
     // console.log(player.position)
+    river_meshes.forEach((river) => {
+        if (river.material instanceof THREE.ShaderMaterial && river.material.uniforms) {
+            river.material.uniforms.time.value += 0.009;
+        } else {
+            console.warn("River material is not a ShaderMaterial or uniforms are undefined", river);
+        }
+    });
 
     // Get modded time.
     let time = clock.getElapsedTime();
@@ -291,6 +299,32 @@ function animate() {
             l.add(player)
             attached_log = l
         }
+        
+        // ****TODO if the player rides on the log, he can go out of bounds -> find a way to bump player off the log
+        // If the log goes out of bounds, bump the player off
+        // var log_position = new THREE.Vector3();
+        // l.matrix.decompose(log_position, new THREE.Quaternion(), new THREE.Vector3());
+        // if (Math.round(log_position.x) >= 24 && attached_log === l) {
+        //     // detaches the player from the log
+        //     l.remove(player);
+        //     player.matrixWorld.decompose(player.position, player.quaternion, player.scale);
+
+        //     player.position.set(player.position.x, player.position.y, player.position.z);
+        //     targetPosition.copy(player.position);
+
+        //     attached_log = null;
+        //     scene.add(player)
+        //     console.log("Player bumped off the log!");
+        //     console.log(player.position);
+
+        //     if(attached_log == null && rivers.includes(curr_lane_)){
+        //         if(lane_box.intersectsBox(player_box)){
+        //             console.log("Game Over");
+        //             death = true;
+        //             player.geometry = player_death_geometry;
+        //         }
+        //     }            
+        // }
     }) 
 
     if(attached_log == null && rivers.includes(curr_lane_) && !isMoving){
@@ -301,7 +335,7 @@ function animate() {
         }
     }
 
-    if(curr_lane_ === lanes.length - 5) addLanes();
+    if(curr_lane_ === lanes.length - 10) addLanes();
 
     // CleanUp
     cleanUp()
@@ -349,6 +383,7 @@ function addLanes(){
             scene.add(river);
             // Add index to indices of river lanes
             rivers.push(i);
+            river_meshes.push(river);
             // Add the actual river as a lane
             lanes.push(river)
         }

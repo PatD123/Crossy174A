@@ -4,7 +4,7 @@ export function Lane(idx){
     // var type_of_lane = Math.floor(Math.random() * 5);
 
     // if(type_of_lane < 4){
-        let lane_geometry = new THREE.BoxGeometry(50, 2, 5)
+        let lane_geometry = new THREE.BoxGeometry(300, 2, 5)
         let lane_material = new THREE.MeshPhongMaterial({color: 0x808080,
                                                             flatShading: true})
         let lane = new THREE.Mesh(lane_geometry, lane_material)
@@ -18,15 +18,52 @@ export function Lane(idx){
     // }
 }
 
-export function River(idx){
-    let river_geometry = new THREE.BoxGeometry(50, 2, 5)
-    let river_material = new THREE.MeshPhongMaterial({color: 0x40E0D0,
-                                                        flatShading: true})
-    let river = new THREE.Mesh(river_geometry, river_material)
-    river.matrix.copy(translationMatrix(0, 0, -6 * idx))
+export function River(idx) {
+    // Define the geometry
+    const river_geometry = new THREE.BoxGeometry(300, 2, 5, 100, 1, 100);
+
+    // Load the texture
+    const waterTexture = new THREE.TextureLoader().load('./textures/river_texture.png');
+    waterTexture.wrapS = waterTexture.wrapT = THREE.RepeatWrapping;
+    waterTexture.repeat.set(10, 1);
+
+    // Define the custom shader material with vertex shader and fragment
+    const river_material = new THREE.ShaderMaterial({
+        vertexShader: `
+            varying vec2 vUv;
+
+            void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            precision highp float;
+            uniform sampler2D waterTexture;
+            uniform float time;
+            varying vec2 vUv;
+            
+            // move the texture horizontally in direction of logs
+            void main() {
+                vec2 uv = vUv;
+                uv.x -= time * 0.1; // Animate the texture scrolling
+                vec4 texColor = texture2D(waterTexture, uv);
+                gl_FragColor = texColor;
+            }
+        `,
+        uniforms: {
+            time: { value: 0.0 },
+            waterTexture: { value: waterTexture },
+            textureWidth: { value: 2048 },
+            textureHeight: { value: 2048 }
+        },
+    });
+
+    const river = new THREE.Mesh(river_geometry, river_material);
+    river.matrix.copy(translationMatrix(0, 0, -6 * idx));
     river.matrixAutoUpdate = false;
-    
-    return river
+
+    return river;
 }
 
 export function Log(){
