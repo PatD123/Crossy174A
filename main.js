@@ -22,29 +22,29 @@ const loader = new OBJLoader();
 let bear = new THREE.Group();
 // Load a resource
 loader.load(
-	// resource URL
-	'models/bear.obj',
-	// called when resource is loaded
-	function ( object ) {
+    // resource URL
+    'models/bear.obj',
+    // called when resource is loaded
+    function ( object ) {
         bear = object;
         object.position.set(0, 1, -7);
         object.scale.set(0.007, 0.007, -0.007)
         console.log(object);
-		scene.add( object );
+        scene.add( object );
 
-	},
-	// called when loading is in progresses
-	function ( xhr ) {
+    },
+    // called when loading is in progresses
+    function ( xhr ) {
 
-		console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+        console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
 
-	},
-	// called when loading has errors
-	function ( error ) {
+    },
+    // called when loading has errors
+    function ( error ) {
 
-		console.log( 'An error happened' );
+        console.log( 'An error happened' );
 
-	}
+    }
 );
 
 camera.position.set(25, 75, 75);
@@ -105,6 +105,9 @@ let attached_log = null;
 let curr_lane_ = 0;
 addLanes();
 
+// Score Calculation
+let max_distance = 0;
+
 // Adding character
 let player_geometry = new THREE.BoxGeometry(2, 2, 2);
 let player_death_geometry = new THREE.CylinderGeometry(3, 3, 0, 12);
@@ -124,8 +127,8 @@ const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 function onPointerMove( event ) {
     // Calculates new position of mouse at all 
-	pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-	pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+    pointer.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+    pointer.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
 }
 
 // Handle keyboard input
@@ -187,7 +190,7 @@ animate();
 function animate() {
     requestAnimationFrame(animate);
 
-    console.log(player.position)
+    // console.log(player.position)
 
     // Get modded time.
     let time = clock.getElapsedTime();
@@ -208,9 +211,11 @@ function animate() {
 
     var new_targetPosition = new THREE.Vector3();
     var new_cam_targetPosition = new THREE.Vector3();
-
+    
     if (isMoving) {
         // If time is first part, we jump up.
+        if (targetPosition.z > 0) {
+        }
         if(T < 0.125){
             new_targetPosition.addVectors(targetPosition, up);
             new_cam_targetPosition.addVectors(cam_targetPosition, up);
@@ -220,7 +225,7 @@ function animate() {
         else{
             new_targetPosition.addVectors(targetPosition, down);
             new_cam_targetPosition.addVectors(cam_targetPosition, down);
-            player.position.lerp(new_targetPosition, 0.9); // Allows player to smoothly get to target location
+            player.position.lerp(new_targetPosition, 0.6); // Allows player to smoothly get to target location
         }        
         
         // If the distance to the target location is made ...
@@ -230,9 +235,14 @@ function animate() {
             isMoving = false; // Allow new movement input
 
             // Update current lane
-            if(moveDir.z < 0) curr_lane_++;
-            else if(moveDir.z > 0) curr_lane_--;
-
+            if(moveDir.z < 0) {
+                if (targetPosition.z < max_distance) {
+                    curr_lane_++;
+                    max_distance = targetPosition.z;
+                    console.log("TARGET: ", targetPosition, "MAX: ", max_distance);
+                }
+            }
+            
             document.getElementById("counter").innerText = curr_lane_;
 
             move_dir_.identity();
