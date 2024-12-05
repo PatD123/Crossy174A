@@ -1,0 +1,33 @@
+@import url('https://fonts.googleapis.com/css?family=Press+Start+2P');
+
+body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    font-family: 'Press Start 2P', cursive;
+}
+#overview {
+    position: absolute;
+}
+#retry {
+    position: relative;
+    width: 96;
+    height: 96;
+    align-items: center;
+    justify-content: center;
+}
+#retry_btn {
+    background-color: red;
+    padding: 10px 50px 10px 50px;   
+    font-family: inherit;
+    font-size: inherit;
+    align-items: center;
+    justify-content: center;            
+}
+#counter {
+    position: absolute;
+    background-color: None;
+    color: white;
+    top: 25px;
+    right: 20px;
+}

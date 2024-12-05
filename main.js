@@ -358,7 +358,6 @@ function addLanes(){
                     if (i == 0 && (treeX > -6 && treeX < 6)) {
                         continue;
                     }
-
                     const treeZ = i * -6; // Lane position
                     const treeMatrix = utils.translationMatrix(treeX, 4, treeZ);
                     tree.matrix.copy(treeMatrix);
