@@ -407,14 +407,15 @@ function addLanes(){
         // otherwise randomly generate a lane type
         if (!isRiver && !isSafe) {
             const type = Math.random();
-            if (type < 0.1) {
+            console.log(lastRiver, i)
+            //make sure adjacent rivers don't spawn since its hard to align logs for a path
+            if (type < 0.2 && lastRiver + 1 != i) {
                 isRiver = true;
             } 
-            else if (type < 0.2) {
+            else if (type < 0.35) {
                 isSafe = true;
             }
         }
-        console.log(isRiver, isSafe);
         // river lanes
         if(isRiver && i != 0){
             var river = utils.River(i);
