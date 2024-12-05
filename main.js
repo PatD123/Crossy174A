@@ -163,7 +163,7 @@ function onKeyDown(event) {
             cameraPerspective = cameraPerspective ? 0 : 1;
             return;
         case 65: // Left
-            if(checkForTrees(new THREE.Vector3(-4, 0, 0))) return;
+            if(Math.round(player.position.x) <= -24 || checkForTrees(new THREE.Vector3(-4, 0, 0))) return;
             move_dir_.copy(utils.translationMatrix(-4, 0, 0))
             break;
         case 87: // Forward
@@ -171,11 +171,11 @@ function onKeyDown(event) {
             move_dir_.copy(utils.translationMatrix(0, 0, -6))
             break;
         case 68: // Right
-            if(checkForTrees(new THREE.Vector3(4, 0, 0))) return;
+            if(Math.round(player.position.x) >= 24 || checkForTrees(new THREE.Vector3(4, 0, 0))) return;
             move_dir_.copy(utils.translationMatrix(4, 0, 0))
             break;
         case 83: // Backward
-            if(checkForTrees(new THREE.Vector3(0, 0, 6))) return;
+            if(Math.round(player.position.z) >= 0 || checkForTrees(new THREE.Vector3(0, 0, 6))) return;
             move_dir_.copy(utils.translationMatrix(0, 0, 6))
             break;
         default:
@@ -244,7 +244,7 @@ function animate() {
                     max_distance = targetPosition.z;
                 }
             }
-            else if (moveDir.z > 0 && curr_lane_ > 0) {
+            else if (moveDir.z > 0) {
                 curr_lane_--;
             }
 
