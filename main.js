@@ -3,6 +3,11 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import * as utils from './utils.js';
 
+// Lane Types
+const SAFE = 0;
+const ROAD  = 1;
+const RIVER = 2;
+
 // Clock for animation timing
 let clock = new THREE.Clock();
 
@@ -96,9 +101,12 @@ let lanes = [];
 let boundingBoxes = {};
 let trees = [];
 let safeLanes = [0];
+let lastSafeLane = 0;
 let rivers = [];
+let lastRiver = 0;
 let river_meshes = [];
 let cars = [];
+let car_direction = [];
 let logs = [];
 let death = false;
 let attached_log = null;
@@ -164,7 +172,7 @@ function onKeyDown(event) {
             cameraPerspective = cameraPerspective ? 0 : 1;
             return;
         case 65: // Left
-            if(Math.round(player.position.x) <= -24 || checkForTrees(new THREE.Vector3(-4, 0, 0))) return;
+            if(Math.round(player.position.x) <= -48 || checkForTrees(new THREE.Vector3(-4, 0, 0))) return;
             move_dir_.copy(utils.translationMatrix(-4, 0, 0))
             break;
         case 87: // Forward
@@ -172,7 +180,7 @@ function onKeyDown(event) {
             move_dir_.copy(utils.translationMatrix(0, 0, -6))
             break;
         case 68: // Right
-            if(Math.round(player.position.x) >= 24 || checkForTrees(new THREE.Vector3(4, 0, 0))) return;
+            if(Math.round(player.position.x) >= 48 || checkForTrees(new THREE.Vector3(4, 0, 0))) return;
             move_dir_.copy(utils.translationMatrix(4, 0, 0))
             break;
         case 83: // Backward
@@ -268,8 +276,14 @@ function animate() {
     renderPerspectives();
 
     // Moving our cars
-    cars.forEach(([t, c], idx) => {
-        var d_x = 0.05 * (time - t);
+    cars.forEach(([t, c, d], idx) => {
+        var d_x = 0;
+        if (d == 1) {
+            d_x = 0.05 * (time - t);
+        }
+        else {
+            d_x = -0.05 * (time - t);
+        }
         var d_x_M = utils.translationMatrix(d_x, 0, 0);
         c.matrix.premultiply(d_x_M);
 
@@ -349,7 +363,7 @@ function cleanUp(){
         var [t, c] = cars[i];
         let car_position = new THREE.Vector3();
         c.matrix.decompose(car_position, new THREE.Quaternion(), new THREE.Vector3());
-        if(car_position.x >= 25){
+        if(car_position.x >= 50){
             c.material.dispose()
             c.geometry.dispose()
             scene.remove(c);
@@ -362,7 +376,7 @@ function cleanUp(){
         var [t, l] = logs[i];
         let log_position = new THREE.Vector3();
         l.matrix.decompose(log_position, new THREE.Quaternion(), new THREE.Vector3());
-        if(log_position.x >= 25){
+        if(log_position.x >= 50){
             l.material.dispose()
             l.geometry.dispose()
             scene.remove(l);
@@ -374,10 +388,35 @@ function cleanUp(){
 }
 
 function addLanes(){
+    const minInterval = 6;
     var start = lanes.length;
     var end = start + 10;
     for(var i = start; i<end; i++){
-        if(i % 6 == 0 && i != 0){
+        let isRiver = false;
+        let isSafe = false;
+
+        // gurantees that there is unique terrain every 6 lanes
+        if (i - lastRiver >= minInterval) {
+            isRiver = true;
+        }
+
+        else if (!isRiver && i - lastSafeLane >= minInterval) {
+            isSafe = true;
+        }
+
+        // otherwise randomly generate a lane type
+        if (!isRiver && !isSafe) {
+            const type = Math.random();
+            if (type < 0.1) {
+                isRiver = true;
+            } 
+            else if (type < 0.2) {
+                isSafe = true;
+            }
+        }
+        console.log(isRiver, isSafe);
+        // river lanes
+        if(isRiver && i != 0){
             var river = utils.River(i);
             // Add river to scene
             scene.add(river);
@@ -386,12 +425,14 @@ function addLanes(){
             river_meshes.push(river);
             // Add the actual river as a lane
             lanes.push(river)
+            lastRiver = i;
         }
         else{
             var lane = utils.Lane(i)
-            if (i % 4 === 0) {
+            //safe lanes
+            if (isSafe || i == 0) {
                 lane.material = new THREE.MeshPhongMaterial({ color: 0x00FF00, flatShading: true });
-                const numTrees = Math.floor(Math.random() * 3) + 1;
+                const numTrees = Math.floor(Math.random() * 6) + 1;
                 
                 //create a list to hold all of the boundary boxes for the trees
                 if (!boundingBoxes[i]) {
@@ -400,7 +441,7 @@ function addLanes(){
 
                 for (let j = 0; j < numTrees; j++) {
                     const tree = utils.Tree();
-                    const treeX = Math.floor((Math.random() * 48 - 24) / 4) * 4;
+                    const treeX = Math.floor((Math.random() * 96 - 48) / 4) * 4;
                     // Make tree not spawn on top of player on spawn
                     if (i == 0 && (treeX > -6 && treeX < 6)) {
                         continue;
@@ -418,7 +459,12 @@ function addLanes(){
                 }
                 console.log(boundingBoxes);
                 safeLanes.push(i);
+                lastSafeLane = i;
             }
+            else {
+                car_direction[i] = Math.random() < 0.5 ? 1 : -1;
+            }
+            //normal lanes
             scene.add(lane);
             lanes.push(lane);
         }
@@ -432,16 +478,18 @@ function randomIntervalPlacement() {
 }
 
 function addCars(){
-    var toStartOfLane = utils.translationMatrix(-22.5, 0, 0);
+    var toStartOfLane = utils.translationMatrix(-48, 0, 0);
+    var toEndOfLane = utils.translationMatrix(48, 0, 0);
     // Get a near lane to place a car
     var lane = utils.getRandomNearLane(curr_lane_, lanes.length);
     // Guarantees that we find a near lane.
     while(safeLanes.includes(lane) || rivers.includes(lane))lane = utils.getRandomNearLane(curr_lane_, lanes.length);
     var car = utils.Car();
     car.matrix.multiply(lanes[lane].matrix);
-    car.matrix.premultiply(toStartOfLane);
+    
+    car_direction[lane] == 1 ? car.matrix.premultiply(toStartOfLane) : car.matrix.premultiply(toEndOfLane);
     scene.add(car);
-    cars.push([clock.getElapsedTime(), car])
+    cars.push([clock.getElapsedTime(), car, car_direction[lane]])
 
     // Placing a car in a farther lane
     for(var i = 0; i<4; i++){
@@ -449,10 +497,9 @@ function addCars(){
         if (!safeLanes.includes(lane) && !rivers.includes(lane)) {
             var car = utils.Car();
             car.matrix.multiply(lanes[lane].matrix);
-            car.matrix.premultiply(toStartOfLane);
+            car_direction[lane] == 1 ? car.matrix.premultiply(toStartOfLane) : car.matrix.premultiply(toEndOfLane);
             scene.add(car);
-    
-            cars.push([clock.getElapsedTime(), car])
+            cars.push([clock.getElapsedTime(), car, car_direction[lane]])
         }        
     }
 
