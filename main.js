@@ -93,6 +93,7 @@ scene.add(directionalLight)
 
 // Provisional Data
 let lanes = [];
+let boundingBoxes = {};
 let trees = [];
 let safeLanes = [0];
 let rivers = [];
@@ -213,7 +214,8 @@ function animate() {
     var new_cam_targetPosition = new THREE.Vector3();
     
     if (isMoving) {
-        console.log(targetPosition);
+        // console.log(targetPosition);
+        // console.log(curr_lane_);
         // If time is first part, we jump up.
         if (targetPosition.z > 0) {
         }
@@ -237,14 +239,18 @@ function animate() {
 
             // Update current lane
             if(moveDir.z < 0) {
+                curr_lane_++;
                 if (targetPosition.z < max_distance) {
-                    curr_lane_++;
                     max_distance = targetPosition.z;
-                    console.log("TARGET: ", targetPosition, "MAX: ", max_distance);
                 }
             }
+            else if (moveDir.z > 0 && curr_lane_ > 0) {
+                curr_lane_--;
+            }
+
+
             
-            document.getElementById("counter").innerText = curr_lane_;
+            document.getElementById("counter").innerText = -max_distance/6;
 
             move_dir_.identity();
         }
@@ -351,6 +357,12 @@ function addLanes(){
             if (i % 4 === 0) {
                 lane.material = new THREE.MeshPhongMaterial({ color: 0x00FF00, flatShading: true });
                 const numTrees = Math.floor(Math.random() * 3) + 1;
+                
+                //create a list to hold all of the boundary boxes for the trees
+                if (!boundingBoxes[i]) {
+                    boundingBoxes[i] = [];
+                }
+
                 for (let j = 0; j < numTrees; j++) {
                     const tree = utils.Tree();
                     const treeX = Math.floor((Math.random() * 48 - 24) / 4) * 4;
@@ -364,7 +376,12 @@ function addLanes(){
                     tree.matrixAutoUpdate = false;
                     scene.add(tree);
                     trees.push(tree);
+
+                    // add the tree's boundary to the list
+                    const treeBoundingBox = new THREE.Box3().setFromObject(tree);
+                    boundingBoxes[i].push(treeBoundingBox);
                 }
+                console.log(boundingBoxes);
                 safeLanes.push(i);
             }
             scene.add(lane);
@@ -487,26 +504,18 @@ function checkForTrees(dir){
     
     // If we are moving out player forward or backward
     // Curr lane has to be in the safelane or the one in the future has to be in the safelanes.
-    var possible_dz = ((dir.z > 0 && safeLanes.includes(curr_lane_ - 1)) || (dir.z < 0 && safeLanes.includes(curr_lane_ + 1)) && curr_lane_ != 0);
-    var possible_dx = ((dir.x > 0 && safeLanes.includes(curr_lane_)) || (dir.x < 0 && safeLanes.includes(curr_lane_)));
-    if(possible_dx || possible_dz){
-        var flag = false;
+    const lane_to_check = [curr_lane_, curr_lane_ - 1, curr_lane_ + 1];
 
-        // Look thru each tree to see if we have an intersection
-        // We should sort the trees and binary search tbh.....
-        trees.forEach((t, idx) => {
-            let bb = new THREE.Box3().setFromObject(t);
-            if(bb.containsPoint(fut_pos)) {
-                flag = true;
-                return true;
+    // Look thru each tree to see if we have an intersection
+    for (const lane of lane_to_check) {
+        // if there the lane is has trees i.e. is a safe lane
+        if (boundingBoxes[lane]) {
+            for (const boundingBox of boundingBoxes[lane]) {
+                if (boundingBox.containsPoint(fut_pos)) {
+                    return true;
+                }
             }
-        })
-
-        // If flag has been set, there was a tree where we were trying to go.
-        if(flag) return true;
-        // Else we return.
-        else return false;
+        }
     }
-
     return false;
 }
