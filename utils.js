@@ -10,7 +10,9 @@ export function Lane(idx){
         let lane = new THREE.Mesh(lane_geometry, lane_material)
         lane.matrix.copy(translationMatrix(0, 0, -6 * idx))
         lane.matrixAutoUpdate = false;
-        
+        lane.castShadow = true;
+        lane.receiveShadow = true;
+
         return lane
     // }
     // else{
@@ -99,11 +101,21 @@ export function safeLane(idx) {
 }
 
 export function Tree() {    
-    const treeGeometry = new THREE.CylinderGeometry(0.5, 2, 6, 12);
-    const trunkMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 });
+    const treeGeometry = new THREE.BoxGeometry(2, 6, 2);
+    const trunkTexture = new THREE.TextureLoader().load('./textures/tree_texture2.png');
+    trunkTexture.wrapS = THREE.RepeatWrapping;
+    trunkTexture.wrapT = THREE.RepeatWrapping;
+    trunkTexture.repeat.set(1, 1);    
+    const trunkMaterial = new THREE.MeshPhongMaterial({ map: trunkTexture });
     const trunk = new THREE.Mesh(treeGeometry, trunkMaterial);
+    // trunk capture
 
-    const foliageGeometry = new THREE.SphereGeometry(2, 12, 12); 
+
+    // Foliage texture
+    // const foliageTexture = textureLoader.load('./textures/leaf_texture.png'); 
+    // foliageTexture.wrapS = THREE.RepeatWrapping;
+    // foliageTexture.wrapT = THREE.RepeatWrapping;
+    const foliageGeometry = new THREE.SphereGeometry(3.5, 12, 12); 
     const foliageMaterial = new THREE.MeshPhongMaterial({ color: 0x228B22 });
     const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
     foliage.position.y = 5;
