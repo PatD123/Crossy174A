@@ -24,33 +24,42 @@ let cameraRotAngle = 0;
 
 // OBJ Loader
 const loader = new OBJLoader();
-let bear = new THREE.Group();
-// Load a resource
-loader.load(
-    // resource URL
-    'models/bear.obj',
-    // called when resource is loaded
-    function ( object ) {
-        bear = object;
-        object.position.set(0, 1, -7);
-        object.scale.set(0.007, 0.007, -0.007)
-        console.log(object);
-        scene.add( object );
+let scooter = null;
 
-    },
-    // called when loading is in progresses
-    function ( xhr ) {
+function loadModel(loader, url) {
+    return new Promise((resolve, reject) => {
+        loader.load(
+            url,
+            (gltf) => resolve(gltf), // Resolve the promise when loaded
+            undefined,               // Optional progress callback
+            (error) => reject(error) // Reject the promise on error
+        );
+    });
+}
 
-        console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+async function loadScooter() {
+    try {
+        scooter = await loadModel(loader, 'models/scooter.obj');
+        scooter.scale.set(0.03, 0.03, -0.03)
+        const localAxis = new THREE.Vector3(0, 1, 0); // Y-axis
 
-    },
-    // called when loading has errors
-    function ( error ) {
+        // Rotate 45 degrees (in radians)
+        const angle = 3*Math.PI/2; // 45°
 
-        console.log( 'An error happened' );
-
+        // Apply rotation
+        scooter.rotateOnAxis(localAxis, angle);
+        scooter.traverse(function(child) {
+            if (child instanceof THREE.Mesh) {
+                child.material.color.set(0x40e0d0);  // Change to red
+            }
+        });
+        console.log('Scooter loaded:', scooter);
+    } catch (error) {
+        console.error('Error loading model:', error);
     }
-);
+}
+
+loadScooter();
 
 camera.position.set(25, 75, 75);
 camera.lookAt(0, 0, 0);
@@ -101,6 +110,7 @@ let rivers = [];
 let lastRiver = 0;
 let river_meshes = [];
 let cars = [];
+let scooters = [];
 let car_direction = [];
 let logs = [];
 let death = false;
@@ -203,7 +213,6 @@ animate();
 function animate() {
     requestAnimationFrame(animate);
 
-    // console.log(player.position)
     river_meshes.forEach((river) => {
         if (river.material instanceof THREE.ShaderMaterial && river.material.uniforms) {
             river.material.uniforms.time.value += 0.009;
@@ -298,7 +307,29 @@ function animate() {
             death = true;
             player.geometry = player_death_geometry;
         }
-    })   
+    })
+
+    // Moving our cars
+    scooters.forEach(([t, s, d], idx) => {
+        var d_x = 0;
+        if (d == 1) {
+            d_x = 0.05 * (time - t);
+        }
+        else {
+            d_x = -0.05 * (time - t);
+        }
+        var d_x_M = utils.translationMatrix(d_x, 0, 0);
+        s.position.set(s.position.x + d_x, s.position.y, s.position.z)
+
+        // Collision Detection for scooters and player
+        var scooter_box = computeScooterBB(s);
+        var player_box = computePlayerBB();
+        if(scooter_box.intersectsBox(player_box)) {
+            console.log("Game Over");
+            death = true;
+            player.geometry = player_death_geometry;
+        }
+    }) 
     
     var lane_box = computeCarBB(lanes[curr_lane_]) // Lanes, logs, and cars are basically the same thing
     var player_box = computePlayerBB();
@@ -478,7 +509,7 @@ function addLanes(){
 
 function randomIntervalPlacement() {
     addCars();
-    const nextInterval = Math.random() * 500 + 200; // Next interval between 2 and 5 seconds
+    const nextInterval = Math.random() * 800 + 400; // Next interval between 2 and 5 seconds
     setTimeout(randomIntervalPlacement, nextInterval); // Schedule the next call
 }
 
@@ -489,12 +520,29 @@ function addCars(){
     var lane = utils.getRandomNearLane(curr_lane_, lanes.length);
     // Guarantees that we find a near lane.
     while(safeLanes.includes(lane) || rivers.includes(lane))lane = utils.getRandomNearLane(curr_lane_, lanes.length);
-    var car = utils.Car();
-    car.matrix.multiply(lanes[lane].matrix);
+
+    var f = Math.random();
+    if(f > 0.3){
+        var car = utils.Car();
+        car.matrix.multiply(lanes[lane].matrix);
+
+        car_direction[lane] == 1 ? car.matrix.premultiply(toStartOfLane) : car.matrix.premultiply(toEndOfLane);
+        scene.add(car);
+        cars.push([clock.getElapsedTime(), car, car_direction[lane]])
+    }
+    else{
+        if(scooter != null && !safeLanes.includes(lane + 3) && !rivers.includes(lane + 3)){
+            var new_scooter = scooter.clone();
+            var lane_pos = new THREE.Vector3();
+            lanes[lane].matrix.decompose(lane_pos, new THREE.Quaternion(), new THREE.Vector3())
+            new_scooter.position.set(lane_pos.x + 90, lane_pos.y - 2, lane_pos.z - 3)
+            scene.add(new_scooter);
+            scooters.push([clock.getElapsedTime(), new_scooter, 0])
+        }
+    }
+
     
-    car_direction[lane] == 1 ? car.matrix.premultiply(toStartOfLane) : car.matrix.premultiply(toEndOfLane);
-    scene.add(car);
-    cars.push([clock.getElapsedTime(), car, car_direction[lane]])
+    
 
     // Placing a car in a farther lane
     for(var i = 0; i<4; i++){
@@ -583,6 +631,11 @@ function computePlayerBB(){
     player_box.translate(player.position);
 
     return player_box;
+}
+
+function computeScooterBB(scoot){
+    let bb = new THREE.Box3().setFromObject(scoot);
+    return bb;
 }
 
 function checkForTrees(dir){
