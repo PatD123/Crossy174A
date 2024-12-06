@@ -91,11 +91,6 @@ let ambientLight = new THREE.AmbientLight( 0xffffff, 0.5);
 ambientLight.power = 10**4
 scene.add(ambientLight)
 
-// Adding Directional Light
-let directionalLight = new THREE.DirectionalLight( 0xffffff, 0.5 );
-directionalLight.position.set(0, 2, 0)
-scene.add(directionalLight)
-
 // Provisional Data
 let lanes = [];
 let boundingBoxes = {};
@@ -127,6 +122,13 @@ let player_material = new THREE.MeshPhongMaterial({color: 0xFF0000,
 let player = new THREE.Mesh(player_geometry, player_material);
 player.position.set(0, 2, 0);
 scene.add(player)
+
+// Adding Directional Light
+let directionalLight = new THREE.DirectionalLight( 0xffffff, 0.6);
+directionalLight.position.set(25, 75, 75);
+directionalLight.castShadow = true;
+directionalLight.target = player;
+scene.add(directionalLight)
 
 // Adding a car
 randomIntervalPlacement();

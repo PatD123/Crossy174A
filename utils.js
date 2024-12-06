@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-
+import { GhibliShader } from './GhibliShader';
 export function Lane(idx){
     // var type_of_lane = Math.floor(Math.random() * 5);
 
@@ -101,6 +101,9 @@ export function safeLane(idx) {
 }
 
 export function Tree() {    
+    let treeHeights = [5, 7, 9];
+    let height = treeHeights[Math.floor(Math.random() * treeHeights.length)];
+
     const treeGeometry = new THREE.BoxGeometry(2, 6, 2);
     const trunkTexture = new THREE.TextureLoader().load('./textures/tree_texture2.png');
     trunkTexture.wrapS = THREE.RepeatWrapping;
@@ -115,10 +118,25 @@ export function Tree() {
     const foliageTexture = new THREE.TextureLoader().load('./textures/leaf_texture2.jpg');
     foliageTexture.wrapS = THREE.RepeatWrapping;
     foliageTexture.wrapT = THREE.RepeatWrapping;
-    const foliageGeometry = new THREE.SphereGeometry(3.5, 12, 12); 
-    const foliageMaterial = new THREE.MeshPhongMaterial({ map: foliageTexture });
+    let colors = [new THREE.Color("#32CD32"), new THREE.Color("#228B22"), new THREE.Color("#196F3D"), new THREE.Color("#145A32")]
+    
+    const foliageMaterial = new THREE.ShaderMaterial({
+        vertexShader: GhibliShader.vertexShader,
+        fragmentShader: GhibliShader.fragmentShader,
+        uniforms: {
+          ...THREE.UniformsUtils.clone(GhibliShader.uniforms),
+          colorMap: { value: colors },
+          brightnessThresholds: { value: [0.8, 0.5, 0.01] },
+          lightPosition: { value: new THREE.Vector3(15, 15, 15) },
+          leafTexture: { value: foliageTexture },
+        },
+      });
+
+    const foliageGeometry = new THREE.BoxGeometry(5, height, 5); 
+    const leaf = new THREE.Mesh()
+    // const foliageMaterial = new THREE.MeshPhongMaterial({ map: foliageTexture });
     const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
-    foliage.position.y = 5;
+    foliage.position.y = 6;
 
     const tree = new THREE.Group();
     tree.add(trunk);
@@ -141,7 +159,6 @@ export function createSun() {
     const sunGeometry = new THREE.SphereGeometry(50, 32, 32); // Adjust size
     const sunMaterial = new THREE.MeshBasicMaterial({
         color: 0xFFFF00, // Yellow
-        emissive: 0xFFFF00, // Glow effect
     });
     const sun = new THREE.Mesh(sunGeometry, sunMaterial);
 
