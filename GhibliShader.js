@@ -42,6 +42,7 @@ export const GhibliShader = {
     uniform float brightnessThresholds[3];
     uniform vec3 lightPosition;
     uniform sampler2D leafTexture;
+    uniform float opacity;
 
     // Variables passed from vertex to fragment shader
     varying vec3 vNormal;
@@ -59,13 +60,13 @@ export const GhibliShader = {
       vec4 final;
 
       if (brightness > brightnessThresholds[0])
-        final = vec4(colorMap[0], 1) * textureColor;
+        final = vec4(colorMap[0], opacity) * textureColor;
       else if (brightness > brightnessThresholds[1])
-        final = vec4(colorMap[1], 1) * textureColor;
+        final = vec4(colorMap[1], opacity) * textureColor;
       else if (brightness > brightnessThresholds[2])
-        final = vec4(colorMap[2], 1) * textureColor;
+        final = vec4(colorMap[2], opacity) * textureColor;
       else
-        final = vec4(colorMap[3], 1) * textureColor;
+        final = vec4(colorMap[3], opacity) * textureColor;
 
       gl_FragColor = vec4( final );
     }`,

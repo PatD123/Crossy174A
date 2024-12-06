@@ -17,7 +17,8 @@ body {
     justify-content: center;
 }
 #retry_btn {
-    background-color: red;
+    background-color: rgb(39, 116, 174);
+    color: rgb(242,169,0);
     padding: 10px 50px 10px 50px;   
     font-family: inherit;
     font-size: inherit;

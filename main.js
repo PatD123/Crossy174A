@@ -24,33 +24,33 @@ let cameraRotAngle = 0;
 
 // OBJ Loader
 const loader = new OBJLoader();
-let bear = new THREE.Group();
-// Load a resource
-loader.load(
-    // resource URL
-    'models/bear.obj',
-    // called when resource is loaded
-    function ( object ) {
-        bear = object;
-        object.position.set(0, 1, -7);
-        object.scale.set(0.007, 0.007, -0.007)
-        console.log(object);
-        scene.add( object );
+// let bear = new THREE.Group();
+// // Load a resource
+// loader.load(
+//     // resource URL
+//     'models/bear.obj',
+//     // called when resource is loaded
+//     function ( object ) {
+//         bear = object;
+//         object.position.set(0, 1, -7);
+//         object.scale.set(0.007, 0.007, -0.007)
+//         console.log(object);
+//         scene.add( object );
 
-    },
-    // called when loading is in progresses
-    function ( xhr ) {
+//     },
+//     // called when loading is in progresses
+//     function ( xhr ) {
 
-        console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+//         console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
 
-    },
-    // called when loading has errors
-    function ( error ) {
+//     },
+//     // called when loading has errors
+//     function ( error ) {
 
-        console.log( 'An error happened' );
+//         console.log( 'An error happened' );
 
-    }
-);
+//     }
+// );
 
 camera.position.set(25, 75, 75);
 camera.lookAt(0, 0, 0);
@@ -63,6 +63,8 @@ document.addEventListener("click", (e) => {
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 0, 0);
@@ -86,13 +88,9 @@ scene.add(xAxis);
 scene.add(yAxis);
 scene.add(zAxis);
 
-// Adding Ambient Light
-let ambientLight = new THREE.AmbientLight( 0xffffff, 0.5);
-ambientLight.power = 10**4
-scene.add(ambientLight)
-
 // Provisional Data
 let lanes = [];
+let lane_speeds = [];
 let boundingBoxes = {};
 let trees = [];
 let safeLanes = [0];
@@ -103,8 +101,10 @@ let river_meshes = [];
 let cars = [];
 let car_direction = [];
 let logs = [];
+let clouds = [];
 let death = false;
 let attached_log = null;
+const carSpeeds = [0.03, 0.04, 0.05];
 
 // Adding lanes
 let curr_lane_ = 0;
@@ -115,20 +115,49 @@ addLanes();
 let max_distance = 0;
 
 // Adding character
-let player_geometry = new THREE.BoxGeometry(2, 2, 2);
-let player_death_geometry = new THREE.CylinderGeometry(3, 3, 0, 12);
-let player_material = new THREE.MeshPhongMaterial({color: 0xFF0000,
-                                                    flatShading: true})
-let player = new THREE.Mesh(player_geometry, player_material);
-player.position.set(0, 2, 0);
+let player = utils.createBruin();
+
+// let player = utils.createBruin();
 scene.add(player)
 
+const bruinBoundingBox = new THREE.Box3(
+    new THREE.Vector3(-1, -1, -1),
+    new THREE.Vector3(1, 1, 1)
+);
+
+function updateBoundingBox(model, boundingBox) {
+    // Translate the fixed bounding box to match the model's position
+    const modelPosition = new THREE.Vector3();
+    model.getWorldPosition(modelPosition); // Get world position of the model
+    boundingBox.min.set(modelPosition.x - 1, modelPosition.y - 1, modelPosition.z - 1);
+    boundingBox.max.set(modelPosition.x + 1, modelPosition.y + 1, modelPosition.z + 1);
+}
+
+// Adding Ambient Light
+let hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 1.5);
+scene.add(hemiLight)
+
 // Adding Directional Light
-let directionalLight = new THREE.DirectionalLight( 0xffffff, 0.6);
+let directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
 directionalLight.position.set(25, 75, 75);
 directionalLight.castShadow = true;
+
 directionalLight.target = player;
+directionalLight.shadow.mapSize.width = 4069;
+directionalLight.shadow.mapSize.height = 4069;
+directionalLight.shadow.camera.left = - 50;
+directionalLight.shadow.camera.right = 50;
+directionalLight.shadow.camera.top = 50;
+directionalLight.shadow.camera.bottom = - 50;
+directionalLight.shadow.camera.near = 0.1;
+directionalLight.shadow.camera.far = 1000;
 scene.add(directionalLight)
+
+// Adding backlight
+const backLight = new THREE.DirectionalLight(0x444444, 0.4);
+backLight.position.set(200, 200, 50);
+backLight.castShadow = false;
+scene.add(backLight);
 
 // Adding a car
 randomIntervalPlacement();
@@ -152,8 +181,9 @@ let cam_targetPosition = new THREE.Vector3(25, 75, 75);
 let time_of_jump = 0.0;
 document.addEventListener('keydown', onKeyDown, false);
 function onKeyDown(event) {
+    
     if (isMoving) return;
-
+    console.log(player.position);
     if(death && event.keyCode != 67) return;
 
     time_of_jump = clock.getElapsedTime();
@@ -170,6 +200,7 @@ function onKeyDown(event) {
     }
 
     switch (event.keyCode) {
+        
         case 67:
             // Change camera perspective
             cameraPerspective = cameraPerspective ? 0 : 1;
@@ -202,7 +233,7 @@ animate();
 
 function animate() {
     requestAnimationFrame(animate);
-
+    animateClouds(clouds);
     // console.log(player.position)
     river_meshes.forEach((river) => {
         if (river.material instanceof THREE.ShaderMaterial && river.material.uniforms) {
@@ -241,12 +272,19 @@ function animate() {
         if(T < 0.125){
             new_targetPosition.addVectors(targetPosition, up);
             new_cam_targetPosition.addVectors(cam_targetPosition, up);
-            player.position.lerp(new_targetPosition, 0.6); // Allows player to smoothly get to target location
+            const new_lightPosition = new THREE.Vector3();
+            new_lightPosition.addVectors(directionalLight.position, up); 
+
+            directionalLight.position.lerp(new_lightPosition, 0.6);
+            player.position.lerp(new_targetPosition, 0.6); // Smoothly update player position   
         }
         // If time is second part, we jump down.
         else{
             new_targetPosition.addVectors(targetPosition, down);
             new_cam_targetPosition.addVectors(cam_targetPosition, down);
+            const new_lightPosition = new THREE.Vector3();
+            new_lightPosition.addVectors(directionalLight.position, down);
+            directionalLight.position.lerp(new_lightPosition, 0.6);            
             player.position.lerp(new_targetPosition, 0.6); // Allows player to smoothly get to target location
         }        
         
@@ -279,13 +317,13 @@ function animate() {
     renderPerspectives();
 
     // Moving our cars
-    cars.forEach(([t, c, d], idx) => {
+    cars.forEach(([t, c, d, s], idx) => {
         var d_x = 0;
         if (d == 1) {
-            d_x = 0.05 * (time - t);
+            d_x = s * (time - t);
         }
         else {
-            d_x = -0.05 * (time - t);
+            d_x = -s * (time - t);
         }
         var d_x_M = utils.translationMatrix(d_x, 0, 0);
         c.matrix.premultiply(d_x_M);
@@ -296,7 +334,7 @@ function animate() {
         if(car_box.intersectsBox(player_box)) {
             console.log("Game Over");
             death = true;
-            player.geometry = player_death_geometry;
+            utils.applyDeathState(player);
         }
     })   
     
@@ -304,14 +342,25 @@ function animate() {
     var player_box = computePlayerBB();
 
     // Moving our logs
-    logs.forEach(([t, l], idx) => {
+    logs.forEach(([t, l, s], idx) => {
         var d_x = 0.05 * (time - t);
         var d_x_M = utils.translationMatrix(d_x, 0, 0);
         l.matrix.premultiply(d_x_M);
 
         // Attaching a car
-        var log_box = computeCarBB(l) // Logs and cars are basically the same thing
-        if(log_box.intersectsBox(player_box) && !isMoving) {
+        var log_box = computeLogBB(l)
+        //if the log goes out of bounds kick the player
+
+        if (attached_log && Math.round(attached_log.position.x) >= 48) {
+            attached_log.remove( player );
+            player.matrixWorld.decompose( player.position, player.quaternion, player.scale );
+            player.position.set(player.position.x, player.position.y - 0.5, player.position.z)
+            targetPosition.copy(player.position)
+            cam_targetPosition.copy(camera.position)
+            scene.add(player)
+            attached_log = null
+        }
+        else if(log_box.intersectsBox(player_box) && !isMoving ) {
             player.position.set(0, 1.9, 0)
             l.add(player)
             attached_log = l
@@ -348,11 +397,11 @@ function animate() {
         if(lane_box.intersectsBox(player_box)){
             console.log("Game Over");
             death = true;
-            player.geometry = player_death_geometry;
+            utils.applyDeathState(player);
         }
     }
 
-    if(curr_lane_ === lanes.length - 10) addLanes();
+    if(lanes.length - 15 <= curr_lane_) addLanes();
 
     // CleanUp
     cleanUp()
@@ -366,11 +415,28 @@ function cleanUp(){
         var [t, c] = cars[i];
         let car_position = new THREE.Vector3();
         c.matrix.decompose(car_position, new THREE.Quaternion(), new THREE.Vector3());
-        if(car_position.x >= 50){
-            c.material.dispose()
-            c.geometry.dispose()
+        if (car_position.x >= 120 || car_position.x <= -160) {
+            // Remove from the scene
             scene.remove(c);
-            c = null
+
+            // Dispose of geometry and materials
+            c.traverse((child) => {
+                if (child.isMesh) {
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach((material) => material.dispose());
+                        } else {
+                            child.material.dispose();
+                        }
+                    }
+                    if (child.geometry) {
+                        child.geometry.dispose();
+                    }
+                }
+            });
+
+            // Remove from the cars array
+            cars.splice(i, 1);
         }
     }
 
@@ -379,7 +445,7 @@ function cleanUp(){
         var [t, l] = logs[i];
         let log_position = new THREE.Vector3();
         l.matrix.decompose(log_position, new THREE.Quaternion(), new THREE.Vector3());
-        if(log_position.x >= 50){
+        if(log_position.x >= 120){
             l.material.dispose()
             l.geometry.dispose()
             scene.remove(l);
@@ -428,6 +494,7 @@ function addLanes(){
             river_meshes.push(river);
             // Add the actual river as a lane
             lanes.push(river)
+            lane_speeds[i] = carSpeeds[Math.floor(Math.random() * carSpeeds.length)];
             lastRiver = i;
         }
         else{
@@ -435,7 +502,7 @@ function addLanes(){
             //safe lanes
             if (isSafe || i == 0) {
                 var safeLane = utils.safeLane(i);
-                const numTrees = Math.floor(Math.random() * 6) + 1;
+                const numTrees = Math.floor(Math.random() * 7) + 1;
                 
                 //create a list to hold all of the boundary boxes for the trees
                 if (!boundingBoxes[i]) {
@@ -469,6 +536,7 @@ function addLanes(){
             //normal lanes           
             else {
                 car_direction[i] = Math.random() < 0.5 ? 1 : -1;
+                lane_speeds[i] = carSpeeds[Math.floor(Math.random() * carSpeeds.length)];            
                 scene.add(lane);
                 lanes.push(lane);                
             }
@@ -478,33 +546,61 @@ function addLanes(){
 
 function randomIntervalPlacement() {
     addCars();
-    const nextInterval = Math.random() * 500 + 200; // Next interval between 2 and 5 seconds
+    const nextInterval = Math.random() * 800 + 400; // Next interval between 2 and 5 seconds
     setTimeout(randomIntervalPlacement, nextInterval); // Schedule the next call
 }
 
 function addCars(){
-    var toStartOfLane = utils.translationMatrix(-48, 0, 0);
-    var toEndOfLane = utils.translationMatrix(48, 0, 0);
+    var toStartOfLane = utils.translationMatrix(-105, 0, 0);
+    var toEndOfLane = utils.translationMatrix(65, 0, 0);
+    var carType = Math.random() < 0.8 ? 0 : 1;
+    console.log(carType);
+    function isCarOverlap(newCarBox, existingCars) {
+        for (const [_, car] of existingCars) {
+            const existingCarBox = computeCarBB(car);
+            if (newCarBox.intersectsBox(existingCarBox)) {
+                return true; // Overlap detected
+            }
+        }
+        return false;
+    }    
     // Get a near lane to place a car
     var lane = utils.getRandomNearLane(curr_lane_, lanes.length);
     // Guarantees that we find a near lane.
     while(safeLanes.includes(lane) || rivers.includes(lane))lane = utils.getRandomNearLane(curr_lane_, lanes.length);
-    var car = utils.Car();
-    car.matrix.multiply(lanes[lane].matrix);
-    
-    car_direction[lane] == 1 ? car.matrix.premultiply(toStartOfLane) : car.matrix.premultiply(toEndOfLane);
-    scene.add(car);
-    cars.push([clock.getElapsedTime(), car, car_direction[lane]])
+    var car = null    
+    if (carType == 0) {
+       car = utils.Car(car_direction[lane]);
+    }
+    else {
+        car = utils.Truck(car_direction[lane]);
+    }
+    car.applyMatrix4(lanes[lane].matrix);
+    car_direction[lane] == 1 ? car.applyMatrix4(toStartOfLane) : car.applyMatrix4(toEndOfLane);
 
+    const newCarBox = computeCarBB(car);
+
+    if (!isCarOverlap(newCarBox, cars)) {
+    scene.add(car);
+    cars.push([clock.getElapsedTime(), car, car_direction[lane], lane_speeds[lane]]);    
+    }
+
+    if (!isCarOverlap(newCarBox, cars)) {
+        scene.add(car);
+        cars.push([clock.getElapsedTime(), car, car_direction[lane], lane_speeds[lane]]);
+    } 
     // Placing a car in a farther lane
     for(var i = 0; i<4; i++){
         var lane = utils.getRandomFarLane(curr_lane_, lanes.length);
         if (!safeLanes.includes(lane) && !rivers.includes(lane)) {
-            var car = utils.Car();
-            car.matrix.multiply(lanes[lane].matrix);
-            car_direction[lane] == 1 ? car.matrix.premultiply(toStartOfLane) : car.matrix.premultiply(toEndOfLane);
-            scene.add(car);
-            cars.push([clock.getElapsedTime(), car, car_direction[lane]])
+            var car = utils.Car(car_direction[lane]);
+            car.applyMatrix4(lanes[lane].matrix);
+            car_direction[lane] == 1 ? car.applyMatrix4(toStartOfLane) : car.applyMatrix4(toEndOfLane);
+            const newCarBox2 = computeCarBB(car);
+            if (!isCarOverlap(newCarBox2, cars)) {
+                scene.add(car);
+                cars.push([clock.getElapsedTime(), car, car_direction[lane], lane_speeds[lane]]);    
+            } 
         }        
     }
 
@@ -516,7 +612,7 @@ function addCars(){
         log.matrix.premultiply(toStartOfLane);
         scene.add(log);
 
-        logs.push([clock.getElapsedTime(), log])
+        logs.push([clock.getElapsedTime(), log, lane_speeds[lane]]);
     }
     
 }
@@ -559,30 +655,26 @@ function renderPerspectives(){
 }
 
 function computeCarBB(car){
-
-    // Decompose matrix to get position
-    car.matrix.decompose(car.position, car.quaternion, car.scale)
-
-    // Compute bounding box to use
-    car.geometry.computeBoundingBox();
-
-    // Change bounding box to be relative to position of car
-    var car_box = car.geometry.boundingBox.clone();
-    car_box.translate(car.position);
-
+    var car_box = new THREE.Box3().setFromObject(car);
     return car_box;
 }
 
-function computePlayerBB(){
+function computeLogBB(log){
+    log.matrix.decompose(log.position, log.quaternion, log.scale)
 
     // Compute bounding box to use
-    player.geometry.computeBoundingBox();
+    log.geometry.computeBoundingBox();
 
-    // Change bounding box to be relative to position of car
-    var player_box = player.geometry.boundingBox.clone();
-    player_box.translate(player.position);
+    // Change bounding box to be relative to position of log
+    var log_box = log.geometry.boundingBox.clone();
+    log_box.translate(log.position);
 
-    return player_box;
+    return log_box;
+}
+
+function computePlayerBB(){
+    updateBoundingBox(player, bruinBoundingBox);
+    return bruinBoundingBox;
 }
 
 function checkForTrees(dir){
@@ -636,14 +728,37 @@ function addBackground() {
     let sun = utils.createSun();
     scene.add(sky);
     scene.add(sun);   
-    // addTexturedClouds()
+    addTexturedClouds(150);
 
 }
 
 function addTexturedClouds(numClouds = 20) {
+    const skyWidth = 1000; // Approximate width of the skybox
+    const skyHeight = 500; // Approximate height range for clouds
+    const skyDepth = 1000; // Approximate depth of the scene
+
     for (let i = 0; i < numClouds; i++) {
-        const cloud = createTexturedCloud();
+        const cloud = utils.createCloud();
+
+        // Randomly position the clouds within the scene bounds
+        cloud.position.set(
+            Math.random() * skyWidth - skyWidth / 2, // X position
+            Math.random() * skyHeight + 150,         // Y position (above ground level)
+            Math.random() * skyDepth - skyDepth / 2 // Z position
+        );
+
+        // Randomly rotate the cloud for variety
+        cloud.rotation.y = Math.random() * Math.PI * 2;
+        clouds.push(cloud);
         scene.add(cloud);
     }
 }
 
+function animateClouds(clouds) {
+    clouds.forEach(cloud => {
+        cloud.position.x += 0.015; 
+        if (cloud.position.x > 500) {
+            cloud.position.x = -1000; // Wrap around
+        }
+    });
+}
