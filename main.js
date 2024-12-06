@@ -526,7 +526,8 @@ function renderPerspectives(){
 
     if(cameraPerspective){
         // First person
-
+        camera.fov = 100;
+        camera.updateProjectionMatrix();
         var h = new THREE.Vector3();
         h.copy(player_world_pos)
         h.z -= 2.5;
@@ -540,7 +541,8 @@ function renderPerspectives(){
     }
     else{
         // Third-Person
-
+        camera.fov = 35;
+        camera.updateProjectionMatrix();
         // Have camera follow TRY and follow smoothly
         var h = new THREE.Vector3();
         // Smoothly interpolate the camera's position towards the target position

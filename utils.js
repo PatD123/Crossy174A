@@ -112,11 +112,11 @@ export function Tree() {
 
 
     // Foliage texture
-    // const foliageTexture = textureLoader.load('./textures/leaf_texture.png'); 
-    // foliageTexture.wrapS = THREE.RepeatWrapping;
-    // foliageTexture.wrapT = THREE.RepeatWrapping;
+    const foliageTexture = new THREE.TextureLoader().load('./textures/leaf_texture2.jpg');
+    foliageTexture.wrapS = THREE.RepeatWrapping;
+    foliageTexture.wrapT = THREE.RepeatWrapping;
     const foliageGeometry = new THREE.SphereGeometry(3.5, 12, 12); 
-    const foliageMaterial = new THREE.MeshPhongMaterial({ color: 0x228B22 });
+    const foliageMaterial = new THREE.MeshPhongMaterial({ map: foliageTexture });
     const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
     foliage.position.y = 5;
 
